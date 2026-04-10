@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Hybrid Demo</title>
+
+    <!-- Disable zoom -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: #f2f2f7;
+        }
+
+        h1 {
+            margin-top: 20px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        /* Animated Button */
+        .animated-btn {
+            width: 120px;
+            height: 120px;
+            background: #4CAF50;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            border: none;
+            outline: none;
+            transition: transform 0.25s ease, box-shadow 0.25s ease;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .animated-btn:hover { transform: scale(1.1); }
+        .animated-btn:active { transform: scale(0.9); }
+
+        .btn-icon {
+            width: 64px;
+            height: 64px;
+            animation: pulse 1.8s infinite ease-in-out;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.15); opacity: 0.85; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        /* Horizontal Image Scroll */
+        .image-scroll {
+            display: flex;
+            overflow-x: auto;
+            margin-top: 30px;
+            padding: 10px;
+            gap: 10px;
+            width: 90%;
+            scroll-behavior: smooth;
+        }
+
+        .image-scroll::-webkit-scrollbar { display: none; }
+
+        .image-scroll img {
+            height: 250px;
+            border-radius: 12px;
+            flex-shrink: 0;
+            transition: transform 0.25s ease;
+            cursor: pointer;
+        }
+
+        .image-scroll img:hover { transform: scale(1.1); }
+
+        /* Fullscreen Preview Overlay */
+        #preview-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.85);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        #preview-overlay img {
+            max-width: 90%;
+            max-height: 90%;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+    </style>
+
+    <script>
+        // Button click calls Android toast
+        function sendToAndroid() {
+            Android.showToast("Hello from HTML button!");
+        }
+
+        // Generate 50 placeholder images
+        const images = [];
+        for (let i = 0; i < 50; i++) {
+            // Use different picsum.photos IDs to avoid duplicates
+            images.push(`https://placedog.net/300/200?id=${i}`);
+        }
+
+        window.addEventListener("DOMContentLoaded", () => {
+            const container = document.getElementById("scroll-container");
+            const overlay = document.getElementById("preview-overlay");
+            const overlayImg = document.getElementById("preview-img");
+
+            // Load images dynamically
+            images.forEach(url => {
+                const img = document.createElement("img");
+                img.src = url;
+                img.onclick = () => {
+                    overlayImg.src = url; // show full preview
+                    overlay.style.display = "flex";
+                };
+                container.appendChild(img);
+            });
+
+            // Hide overlay when clicking anywhere
+            overlay.onclick = () => {
+                overlay.style.display = "none";
+            };
+        });
+    </script>
+</head>
+<body>
+
+<h1>Hello from HTML5 Hybrid App</h1>
+
+<button class="animated-btn" onclick="sendToAndroid()">
+    <img src="icon.png" class="btn-icon" />
+</button>
+
+<!-- Horizontal Scrollable Images -->
+<div class="image-scroll" id="scroll-container">
+    <!-- Images loaded dynamically -->
+</div>
+
+<!-- Fullscreen Preview Overlay -->
+<div id="preview-overlay">
+    <img id="preview-img" src="" />
+</div>
+
+</body>
+</html>

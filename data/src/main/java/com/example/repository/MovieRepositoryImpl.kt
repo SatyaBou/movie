@@ -15,8 +15,7 @@ class MovieRepositoryImpl(private val apiService: ApiService) : MovieRepository 
     override fun getNowPlaying(page: Int): Flow<NetworkResult<List<Movie>>> {
         return safeApiCallDirect {
             apiService.getNowPlaying(
-                page,
-                "en-US"
+                page, "en-US"
             ).results.map { it.toDomain() }
         }
     }
@@ -24,8 +23,7 @@ class MovieRepositoryImpl(private val apiService: ApiService) : MovieRepository 
     override fun getPopular(page: Int): Flow<NetworkResult<List<Movie>>> {
         return safeApiCallDirect {
             apiService.getPopular(
-                page,
-                "en-US"
+                page, "en-US"
             ).results.map { it.toDomain() }
         }
     }
@@ -33,8 +31,7 @@ class MovieRepositoryImpl(private val apiService: ApiService) : MovieRepository 
     override fun getUpcoming(page: Int): Flow<NetworkResult<List<Movie>>> {
         return safeApiCallDirect {
             apiService.getUpcoming(
-                page,
-                "en-US"
+                page, "en-US"
             ).results.map { it.toDomain() }
         }
     }
@@ -42,8 +39,7 @@ class MovieRepositoryImpl(private val apiService: ApiService) : MovieRepository 
     override fun getTopRated(page: Int): Flow<NetworkResult<List<Movie>>> {
         return safeApiCallDirect {
             apiService.getTopRated(
-                page,
-                "en-US"
+                page, "en-US"
             ).results.map { it.toDomain() }
         }
     }
@@ -75,6 +71,28 @@ class MovieRepositoryImpl(private val apiService: ApiService) : MovieRepository 
             }
         }
     }
+
+    override fun getTrendingMovies(page: Int): Flow<NetworkResult<List<Movie>>> {
+        return flow {
+            emit(NetworkResult.Loading())
+
+            try {
+                val response = apiService.getTrendingMovies(page = page)
+                if (response.isSuccessful) {
+                    val trendingMovies =
+                        response.body()?.results?.map { it.toDomain() } ?: emptyList()
+                    emit(NetworkResult.Success(trendingMovies))
+                } else {
+                    emit(NetworkResult.Error(response.message(), response.code()))
+
+                }
+            } catch (e: Exception) {
+                emit(NetworkResult.Exception(e))
+            }
+        }
+    }
+
+
 }
 
 // Mappers

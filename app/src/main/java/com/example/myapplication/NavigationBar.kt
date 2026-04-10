@@ -40,6 +40,7 @@ import com.canhub.cropper.CropImageContractOptions
 import com.canhub.cropper.CropImageOptions
 import com.canhub.cropper.CropImageView
 import com.example.myapplication.ui.detail.MovieDetailScreen
+import com.example.myapplication.ui.home.HomeMovieScreen
 import com.example.myapplication.ui.movie.MovieScreen
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -212,6 +213,7 @@ fun HomeScreen() {
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         //Home Movie
+        HomeMovieScreen()
 
     }
 }

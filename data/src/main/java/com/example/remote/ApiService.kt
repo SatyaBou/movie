@@ -7,6 +7,7 @@ import com.example.domain.model.NowPlayingMovieResponse
 import com.example.domain.model.PopularMovieResponse
 import com.example.domain.model.SearchMovieResponse
 import com.example.domain.model.TopRatedMovieResponse
+import com.example.domain.model.TrendingResponse
 import com.example.domain.model.UpcomingMovieResponse
 import retrofit2.Response
 import retrofit2.http.GET
@@ -63,4 +64,9 @@ interface ApiService {
         @Query("page") page: Int?,
         @Query("language") language: String?,
     ): Response<SearchMovieResponse>
+
+    @GET("trending/movie/day")
+    suspend fun getTrendingMovies(
+        @Query("page") page: Int = 1
+    ): Response<TrendingResponse>
 }

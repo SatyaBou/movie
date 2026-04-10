@@ -9,7 +9,7 @@ data class HomeMovieState(
 )
 
 sealed class HomeMovieIntent {
-    object LoadNowPlaying : HomeMovieIntent()
+    data class LoadTrendingMovies(val page: Int) : HomeMovieIntent()
 }
 
 sealed class HomeMovieEffect {

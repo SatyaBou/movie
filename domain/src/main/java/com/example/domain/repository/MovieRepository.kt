@@ -12,4 +12,6 @@ interface MovieRepository {
     fun getTopRated(page: Int): Flow<NetworkResult<List<Movie>>>
     fun getMovieDetails(movieId: String): Flow<NetworkResult<MovieDetailsResponse>>
     fun searchMovies(query: String, page: Int): Flow<NetworkResult<List<Movie>>>
+
+    fun getTrendingMovies(page: Int): Flow<NetworkResult<List<Movie>>>
 }

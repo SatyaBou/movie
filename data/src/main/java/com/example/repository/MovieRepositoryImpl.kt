@@ -1,121 +1,153 @@
 package com.example.repository
 
 import com.example.common.util.NetworkResult
-import com.example.common.util.safeApiCall
-import com.example.common.util.safeApiCallDirect
+import com.example.domain.model.Genre
 import com.example.domain.model.Movie
 import com.example.domain.model.MovieDetailsResponse
+import com.example.domain.model.Video
 import com.example.domain.repository.MovieRepository
 import com.example.remote.ApiService
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.map
+import retrofit2.HttpException
+import java.io.IOException
 
-class MovieRepositoryImpl(private val apiService: ApiService) : MovieRepository {
-    override fun getNowPlaying(page: Int): Flow<NetworkResult<List<Movie>>> {
-        return safeApiCallDirect {
-            apiService.getNowPlaying(
-                page, "en-US"
-            ).results.map { it.toDomain() }
+class MovieRepositoryImpl(
+    private val apiService: ApiService
+) : MovieRepository {
+    override fun getNowPlaying(page: Int): Flow<NetworkResult<List<Movie>>> = flow {
+        emit(NetworkResult.Loading())
+        try {
+            val response = apiService.getNowPlaying(page, null)
+            emit(NetworkResult.Success(response.results))
+        } catch (e: HttpException) {
+            emit(NetworkResult.Error(e.localizedMessage ?: "An unexpected error occurred"))
+        } catch (e: IOException) {
+            emit(NetworkResult.Error("Couldn't reach server. Check your internet connection."))
         }
     }
 
-    override fun getPopular(page: Int): Flow<NetworkResult<List<Movie>>> {
-        return safeApiCallDirect {
-            apiService.getPopular(
-                page, "en-US"
-            ).results.map { it.toDomain() }
+    override fun getPopular(page: Int): Flow<NetworkResult<List<Movie>>> = flow {
+        emit(NetworkResult.Loading())
+        try {
+            val response = apiService.getPopular(page, null)
+            emit(NetworkResult.Success(response.results))
+        } catch (e: HttpException) {
+            emit(NetworkResult.Error(e.localizedMessage ?: "An unexpected error occurred"))
+        } catch (e: IOException) {
+            emit(NetworkResult.Error("Couldn't reach server. Check your internet connection."))
         }
     }
 
-    override fun getUpcoming(page: Int): Flow<NetworkResult<List<Movie>>> {
-        return safeApiCallDirect {
-            apiService.getUpcoming(
-                page, "en-US"
-            ).results.map { it.toDomain() }
+    override fun getUpcoming(page: Int): Flow<NetworkResult<List<Movie>>> = flow {
+        emit(NetworkResult.Loading())
+        try {
+            val response = apiService.getUpcoming(page, null)
+            emit(NetworkResult.Success(response.results))
+        } catch (e: HttpException) {
+            emit(NetworkResult.Error(e.localizedMessage ?: "An unexpected error occurred"))
+        } catch (e: IOException) {
+            emit(NetworkResult.Error("Couldn't reach server. Check your internet connection."))
         }
     }
 
-    override fun getTopRated(page: Int): Flow<NetworkResult<List<Movie>>> {
-        return safeApiCallDirect {
-            apiService.getTopRated(
-                page, "en-US"
-            ).results.map { it.toDomain() }
+    override fun getTopRated(page: Int): Flow<NetworkResult<List<Movie>>> = flow {
+        emit(NetworkResult.Loading())
+        try {
+            val response = apiService.getTopRated(page, null)
+            emit(NetworkResult.Success(response.results))
+        } catch (e: HttpException) {
+            emit(NetworkResult.Error(e.localizedMessage ?: "An unexpected error occurred"))
+        } catch (e: IOException) {
+            emit(NetworkResult.Error("Couldn't reach server. Check your internet connection."))
         }
     }
 
-    override fun getMovieDetails(movieId: String): Flow<NetworkResult<MovieDetailsResponse>> {
-        return safeApiCall { apiService.getMovieDetails(movieId, "en-US") }.map { result ->
-            when (result) {
-                is NetworkResult.Success -> NetworkResult.Success(result.data.toDomain())
-                is NetworkResult.Error -> NetworkResult.Error(result.message, result.code)
-                is NetworkResult.Loading -> NetworkResult.Loading()
-                is NetworkResult.Exception -> NetworkResult.Exception(result.e)
+    override fun getMovieDetails(movieId: String): Flow<NetworkResult<MovieDetailsResponse>> = flow {
+        emit(NetworkResult.Loading())
+        try {
+            val response = apiService.getMovieDetails(movieId, null)
+            if (response.isSuccessful && response.body() != null) {
+                emit(NetworkResult.Success(response.body()!!))
+            } else {
+                emit(NetworkResult.Error("An error occurred"))
             }
+        } catch (e: HttpException) {
+            emit(NetworkResult.Error(e.localizedMessage ?: "An unexpected error occurred"))
+        } catch (e: IOException) {
+            emit(NetworkResult.Error("Couldn't reach server. Check your internet connection."))
         }
     }
 
-    override fun searchMovies(query: String, page: Int): Flow<NetworkResult<List<Movie>>> {
-        return flow {
-            emit(NetworkResult.Loading())
-            try {
-                val response = apiService.searchMovie(query, page, "en-US")
-                if (response.isSuccessful) {
-                    val movies = response.body()?.results?.map { it.toDomain() } ?: emptyList()
-                    emit(NetworkResult.Success(movies))
-                } else {
-                    emit(NetworkResult.Error(response.message(), response.code()))
-                }
-            } catch (e: Exception) {
-                emit(NetworkResult.Exception(e))
+    override fun searchMovies(query: String, page: Int): Flow<NetworkResult<List<Movie>>> = flow {
+        emit(NetworkResult.Loading())
+        try {
+            val response = apiService.searchMovie(query, page, null)
+            if (response.isSuccessful && response.body() != null) {
+                emit(NetworkResult.Success(response.body()!!.results))
+            } else {
+                emit(NetworkResult.Error("An error occurred"))
             }
+        } catch (e: HttpException) {
+            emit(NetworkResult.Error(e.localizedMessage ?: "An unexpected error occurred"))
+        } catch (e: IOException) {
+            emit(NetworkResult.Error("Couldn't reach server. Check your internet connection."))
         }
     }
 
-    override fun getTrendingMovies(page: Int): Flow<NetworkResult<List<Movie>>> {
-        return flow {
-            emit(NetworkResult.Loading())
-
-            try {
-                val response = apiService.getTrendingMovies(page = page)
-                if (response.isSuccessful) {
-                    val trendingMovies =
-                        response.body()?.results?.map { it.toDomain() } ?: emptyList()
-                    emit(NetworkResult.Success(trendingMovies))
-                } else {
-                    emit(NetworkResult.Error(response.message(), response.code()))
-
-                }
-            } catch (e: Exception) {
-                emit(NetworkResult.Exception(e))
+    override fun getTrendingMovies(page: Int): Flow<NetworkResult<List<Movie>>> = flow {
+        emit(NetworkResult.Loading())
+        try {
+            val response = apiService.getTrendingMovies(page)
+            if (response.isSuccessful && response.body() != null) {
+                emit(NetworkResult.Success(response.body()!!.results))
+            } else {
+                emit(NetworkResult.Error("An error occurred"))
             }
+        } catch (e: HttpException) {
+            emit(NetworkResult.Error(e.localizedMessage ?: "An unexpected error occurred"))
+        } catch (e: IOException) {
+            emit(NetworkResult.Error("Couldn't reach server. Check your internet connection."))
         }
     }
 
+    override fun getGenres(): Flow<NetworkResult<List<Genre>>> = flow {
+        emit(NetworkResult.Loading())
+        try {
+            val response = apiService.getGenres()
+            emit(NetworkResult.Success(response.genres))
+        } catch (e: HttpException) {
+            emit(NetworkResult.Error(e.localizedMessage ?: "An unexpected error occurred"))
+        } catch (e: IOException) {
+            emit(NetworkResult.Error("Couldn't reach server. Check your internet connection."))
+        }
+    }
 
-}
+    override fun getMoviesByGenre(genreId: Int): Flow<NetworkResult<List<Movie>>> = flow {
+        emit(NetworkResult.Loading())
+        try {
+            val response = apiService.getMoviesByGenre(genreId)
+            emit(NetworkResult.Success(response.results))
+        } catch (e: HttpException) {
+            emit(NetworkResult.Error(e.localizedMessage ?: "An unexpected error occurred"))
+        } catch (e: IOException) {
+            emit(NetworkResult.Error("Couldn't reach server. Check your internet connection."))
+        }
+    }
 
-// Mappers
-fun Movie.toDomain(): Movie {
-    return Movie(
-        id = id,
-        title = title,
-        posterPath = posterPath,
-        overview = overview,
-        releaseDate = releaseDate,
-        voteAverage = voteAverage
-    )
-}
-
-fun MovieDetailsResponse.toDomain(): MovieDetailsResponse {
-    return MovieDetailsResponse(
-        id = id,
-        title = title,
-        overview = overview,
-        posterPath = posterPath,
-        backdropPath = backdropPath,
-        releaseDate = releaseDate,
-        runtime = runtime,
-        genres = genres
-    )
+    override fun getMovieVideos(movieId: String): Flow<NetworkResult<List<Video>>> = flow {
+        emit(NetworkResult.Loading())
+        try {
+            val response = apiService.getMovieVideos(movieId)
+            if (response.isSuccessful && response.body() != null) {
+                emit(NetworkResult.Success(response.body()!!.results))
+            } else {
+                emit(NetworkResult.Error("An error occurred"))
+            }
+        } catch (e: HttpException) {
+            emit(NetworkResult.Error(e.localizedMessage ?: "An unexpected error occurred"))
+        } catch (e: IOException) {
+            emit(NetworkResult.Error("Couldn't reach server. Check your internet connection."))
+        }
+    }
 }

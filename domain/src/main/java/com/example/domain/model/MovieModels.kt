@@ -8,6 +8,7 @@ data class Movie(
     @Json(name = "id") val id: Int,
     @Json(name = "title") val title: String?,
     @Json(name = "poster_path") val posterPath: String?,
+    @Json(name = "backdrop_path") val backdropPath: String?,
     @Json(name = "overview") val overview: String?,
     @Json(name = "release_date") val releaseDate: String?,
     @Json(name = "vote_average") val voteAverage: Double?
@@ -50,7 +51,8 @@ data class MovieDetailsResponse(
     @Json(name = "backdrop_path") val backdropPath: String?,
     @Json(name = "release_date") val releaseDate: String?,
     @Json(name = "runtime") val runtime: Int?,
-    @Json(name = "genres") val genres: List<Genre>?
+    @Json(name = "genres") val genres: List<Genre>?,
+    @Json(name = "vote_average") val voteAverage: Double?
 )
 
 @JsonClass(generateAdapter = true)
@@ -79,13 +81,6 @@ data class GetVideosResponse(
     @Json(name = "results") val results: List<Video>
 )
 
-@JsonClass(generateAdapter = true)
-data class Video(
-    @Json(name = "id") val id: String,
-    @Json(name = "key") val key: String,
-    @Json(name = "site") val site: String,
-    @Json(name = "type") val type: String
-)
 
 @JsonClass(generateAdapter = true)
 data class SearchMovieResponse(
@@ -100,4 +95,30 @@ data class TrendingResponse(
     @Json(name = "results") val results: List<Movie>,
     @Json(name = "total_pages") val totalPages: Int,
     @Json(name = "total_results") val totalResults: Int
+)
+
+data class GenreResponse(
+    @Json(name = "genres")
+    val genres: List<Genre>
+)
+
+@JsonClass(generateAdapter = true)
+data class VideoResponse(
+    val id: Int,
+    val results: List<Video>
+)
+
+@JsonClass(generateAdapter = true)
+data class Video(
+    val id: String,
+    val name: String,
+    val key: String,
+    val site: String,
+    val type: String,
+
+    @Json(name = "official")
+    val official: Boolean? = null,
+
+    @Json(name = "published_at")
+    val publishedAt: String? = null
 )

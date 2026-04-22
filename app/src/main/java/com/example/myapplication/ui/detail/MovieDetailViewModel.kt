@@ -3,11 +3,14 @@ package com.example.myapplication.ui.detail
 import androidx.lifecycle.viewModelScope
 import com.example.common.base.BaseViewModel
 import com.example.domain.usecase.GetMovieDetailsUseCase
+import com.example.domain.usecase.GetMovieVideosUseCase
 import com.example.common.util.NetworkResult
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 class MovieDetailViewModel(
-    private val getMovieDetailsUseCase: GetMovieDetailsUseCase
+    private val getMovieDetailsUseCase: GetMovieDetailsUseCase,
+    private val getMovieVideosUseCase: GetMovieVideosUseCase
 ) : BaseViewModel<MovieDetailState, MovieDetailIntent, MovieDetailEffect>(MovieDetailState()) {
 
     override fun handleIntent(intent: MovieDetailIntent) {
@@ -22,16 +25,26 @@ class MovieDetailViewModel(
 
     private fun fetchMovieDetails(movieId: String) {
         viewModelScope.launch {
-            getMovieDetailsUseCase(movieId).collect { result ->
-                when (result) {
-                    is NetworkResult.Loading -> updateState { copy(isLoading = true, errorMessage = null) }
-                    is NetworkResult.Success -> updateState { copy(isLoading = false, movie = result.data) }
-                    is NetworkResult.Error -> {
-                        updateState { copy(isLoading = false, errorMessage = result.message) }
-                        sendEffect(MovieDetailEffect.ShowError(result.message))
+            combine(
+                getMovieDetailsUseCase(movieId),
+                getMovieVideosUseCase(movieId)
+            ) { movieResult, videosResult ->
+                Pair(movieResult, videosResult)
+            }.collect { (movieResult, videosResult) ->
+                when {
+                    movieResult is NetworkResult.Loading || videosResult is NetworkResult.Loading -> {
+                        updateState { copy(isLoading = true, errorMessage = null) }
                     }
-                    is NetworkResult.Exception -> {
-                        val message = result.e.message ?: "An unexpected error occurred"
+                    movieResult is NetworkResult.Success -> {
+                        val videos = if (videosResult is NetworkResult.Success) videosResult.data ?: emptyList() else emptyList()
+                        updateState { copy(isLoading = false, movie = movieResult.data, videos = videos) }
+                    }
+                    movieResult is NetworkResult.Error -> {
+                        updateState { copy(isLoading = false, errorMessage = movieResult.message) }
+                        sendEffect(MovieDetailEffect.ShowError(movieResult.message))
+                    }
+                    movieResult is NetworkResult.Exception -> {
+                        val message = movieResult.e.message ?: "An unexpected error occurred"
                         updateState { copy(isLoading = false, errorMessage = message) }
                         sendEffect(MovieDetailEffect.ShowError(message))
                     }

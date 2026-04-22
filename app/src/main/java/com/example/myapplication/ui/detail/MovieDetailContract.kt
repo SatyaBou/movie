@@ -1,10 +1,12 @@
 package com.example.myapplication.ui.detail
 
 import com.example.domain.model.MovieDetailsResponse
+import com.example.domain.model.Video
 
 data class MovieDetailState(
     val isLoading: Boolean = false,
     val movie: MovieDetailsResponse? = null,
+    val videos: List<Video> = emptyList(),
     val errorMessage: String? = null
 )
 

@@ -90,4 +90,5 @@ dependencies {
     implementation(libs.android.image.cropper)
     implementation(libs.koin.android)
     implementation(libs.koin.androidx.compose)
+    implementation(libs.android.youtube.player)
 }

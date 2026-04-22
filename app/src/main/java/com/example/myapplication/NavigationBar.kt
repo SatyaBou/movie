@@ -204,16 +204,5 @@ fun ProfileScreen() {
 
 @Composable
 fun HomeScreen() {
-    val scrollState = rememberScrollState()
-
-    Column(
-        modifier = Modifier
-            .padding(16.dp)
-            .verticalScroll(scrollState),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        //Home Movie
-        HomeMovieScreen()
-
-    }
+    HomeMovieScreen()
 }

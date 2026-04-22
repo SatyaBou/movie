@@ -1,8 +1,10 @@
 package com.example.domain.repository
 
 import com.example.common.util.NetworkResult
+import com.example.domain.model.Genre
 import com.example.domain.model.Movie
 import com.example.domain.model.MovieDetailsResponse
+import com.example.domain.model.Video
 import kotlinx.coroutines.flow.Flow
 
 interface MovieRepository {
@@ -14,4 +16,7 @@ interface MovieRepository {
     fun searchMovies(query: String, page: Int): Flow<NetworkResult<List<Movie>>>
 
     fun getTrendingMovies(page: Int): Flow<NetworkResult<List<Movie>>>
+    fun getGenres(): Flow<NetworkResult<List<Genre>>>
+    fun getMoviesByGenre(genreId: Int): Flow<NetworkResult<List<Movie>>>
+    fun getMovieVideos(movieId: String): Flow<NetworkResult<List<Video>>>
 }

@@ -1,7 +1,6 @@
 package com.example.remote
 
-import com.example.domain.model.GetVideosResponse
-import com.example.domain.model.MovieCreditsResponse
+import com.example.domain.model.GenreResponse
 import com.example.domain.model.MovieDetailsResponse
 import com.example.domain.model.NowPlayingMovieResponse
 import com.example.domain.model.PopularMovieResponse
@@ -9,6 +8,7 @@ import com.example.domain.model.SearchMovieResponse
 import com.example.domain.model.TopRatedMovieResponse
 import com.example.domain.model.TrendingResponse
 import com.example.domain.model.UpcomingMovieResponse
+import com.example.domain.model.VideoResponse
 import retrofit2.Response
 import retrofit2.http.GET
 import retrofit2.http.Path
@@ -46,17 +46,11 @@ interface ApiService {
         @Query("language") language: String?,
     ): Response<MovieDetailsResponse>
 
-    @GET("movie/{movieId}/credits")
-    suspend fun getMovieCredits(
-        @Path("movieId") movieId: String,
-        @Query("language") language: String?,
-    ): Response<MovieCreditsResponse>
-
-    @GET("movie/{movieId}/videos")
-    suspend fun getVideos(
-        @Path("movieId") movieId: String,
-        @Query("language") language: String?,
-    ): Response<GetVideosResponse>
+    @GET("movie/{movie_id}/videos")
+    suspend fun getMovieVideos(
+        @Path("movie_id") movieId: String,
+        @Query("language") language: String? = null
+    ): Response<VideoResponse>
 
     @GET("search/movie")
     suspend fun searchMovie(
@@ -69,4 +63,13 @@ interface ApiService {
     suspend fun getTrendingMovies(
         @Query("page") page: Int = 1
     ): Response<TrendingResponse>
+
+    @GET("genre/movie/list")
+    suspend fun getGenres(): GenreResponse
+
+    @GET("discover/movie")
+    suspend fun getMoviesByGenre(
+        @Query("with_genres") genreId: Int,
+        @Query("page") page: Int = 1
+    ): PopularMovieResponse
 }

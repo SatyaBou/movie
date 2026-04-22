@@ -1,5 +1,7 @@
 package com.example.myapplication.ui.detail
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -10,13 +12,19 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import coil.compose.AsyncImage
+import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.PlayerConstants
+import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.YouTubePlayer
+import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.listeners.AbstractYouTubePlayerListener
+import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.views.YouTubePlayerView
 import kotlinx.coroutines.flow.collectLatest
 import org.koin.androidx.compose.koinViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun MovieDetailScreen(
     movieId: String,
@@ -30,11 +38,12 @@ fun MovieDetailScreen(
         viewModel.handleIntent(MovieDetailIntent.LoadMovieDetail(movieId))
     }
 
-    LaunchedEffect(viewModel.effect) {
+    LaunchedEffect(Unit) {
         viewModel.effect.collectLatest { effect ->
             when (effect) {
                 is MovieDetailEffect.NavigateBack -> onBack()
-                is MovieDetailEffect.ShowError -> snackbarHostState.showSnackbar(effect.message)
+                is MovieDetailEffect.ShowError ->
+                    snackbarHostState.showSnackbar(effect.message)
             }
         }
     }
@@ -45,83 +54,136 @@ fun MovieDetailScreen(
             TopAppBar(
                 title = { Text(state.movie?.title ?: "Movie Detail") },
                 navigationIcon = {
-                    IconButton(onClick = { viewModel.handleIntent(MovieDetailIntent.BackClicked) }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    IconButton(
+                        onClick = {
+                            viewModel.handleIntent(MovieDetailIntent.BackClicked)
+                        }
+                    ) {
+                        Icon(Icons.Default.ArrowBack, null)
                     }
                 }
             )
         }
     ) { padding ->
+
         Box(
             modifier = Modifier
                 .padding(padding)
                 .fillMaxSize()
         ) {
-            if (state.isLoading) {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-            }
 
             state.movie?.let { movie ->
+
+                val trailer = state.videos.firstOrNull {
+                    it.site.equals("YouTube", true) &&
+                            it.type.equals("Trailer", true)
+                } ?: state.videos.firstOrNull {
+                    it.site.equals("YouTube", true)
+                }
+
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
                         .verticalScroll(rememberScrollState())
                 ) {
-                    AsyncImage(
-                        model = "https://image.tmdb.org/t/p/w780${movie.backdropPath ?: movie.posterPath}",
-                        contentDescription = null,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(250.dp),
-                        contentScale = ContentScale.Crop
-                    )
 
-                    Column(modifier = Modifier.padding(16.dp)) {
+                    if (trailer != null && trailer.key.isNotEmpty()) {
+                        YouTubePlayer(
+                            videoId = trailer.key,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(240.dp)
+                        )
+                    } else {
+                        AsyncImage(
+                            model = "https://image.tmdb.org/t/p/w780${movie.backdropPath ?: movie.posterPath}",
+                            contentDescription = null,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(240.dp),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
+
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+
                         Text(
                             text = movie.title ?: "",
                             style = MaterialTheme.typography.headlineMedium,
                             fontWeight = FontWeight.Bold
                         )
+
                         Spacer(modifier = Modifier.height(8.dp))
+
                         Row {
                             Text(
                                 text = movie.releaseDate ?: "",
-                                style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.secondary
                             )
+
                             movie.runtime?.let {
                                 Spacer(modifier = Modifier.width(16.dp))
                                 Text(
                                     text = "$it min",
-                                    style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.secondary
                                 )
                             }
                         }
+
                         Spacer(modifier = Modifier.height(16.dp))
+
                         Text(
                             text = "Overview",
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold
                         )
+
                         Spacer(modifier = Modifier.height(8.dp))
+
                         Text(
-                            text = movie.overview ?: "No overview available.",
-                            style = MaterialTheme.typography.bodyLarge
+                            text = movie.overview ?: "No overview available."
                         )
-                        
+
                         movie.genres?.let { genres ->
                             Spacer(modifier = Modifier.height(16.dp))
+
+                            Text(
+                                text = "Genres",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
                             FlowRow(
-                                modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 genres.forEach { genre ->
                                     SuggestionChip(
-                                        onClick = { },
+                                        onClick = {},
                                         label = { Text(genre.name) }
                                     )
                                 }
+                            }
+                        }
+
+                        movie.voteAverage?.let { rating ->
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = "Rating",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = "⭐ $rating / 10",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Medium
+                                )
                             }
                         }
                     }
@@ -133,12 +195,66 @@ fun MovieDetailScreen(
                     modifier = Modifier.align(Alignment.Center),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text(text = state.errorMessage!!)
-                    Button(onClick = { viewModel.handleIntent(MovieDetailIntent.LoadMovieDetail(movieId)) }) {
+                    Text(state.errorMessage!!)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(
+                        onClick = {
+                            viewModel.handleIntent(
+                                MovieDetailIntent.LoadMovieDetail(movieId)
+                            )
+                        }
+                    ) {
                         Text("Retry")
                     }
                 }
             }
+
+            if (state.isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.Center)
+                )
+            }
         }
     }
+}
+
+@Composable
+fun YouTubePlayer(
+    videoId: String,
+    modifier: Modifier = Modifier
+) {
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    AndroidView(
+        modifier = modifier,
+        factory = { context ->
+            YouTubePlayerView(context).apply {
+
+                lifecycleOwner.lifecycle.addObserver(this)
+
+                addYouTubePlayerListener(object : AbstractYouTubePlayerListener() {
+
+                    override fun onReady(youTubePlayer: YouTubePlayer) {
+                        youTubePlayer.loadVideo(videoId, 0f)
+                    }
+
+                    override fun onError(
+                        youTubePlayer: YouTubePlayer,
+                        error: PlayerConstants.PlayerError
+                    ) {
+                        if (error == PlayerConstants.PlayerError.VIDEO_NOT_PLAYABLE_IN_EMBEDDED_PLAYER) {
+                            val intent = Intent(
+                                Intent.ACTION_VIEW,
+                                Uri.parse("https://www.youtube.com/watch?v=$videoId")
+                            )
+                            context.startActivity(intent)
+                        }
+                    }
+                })
+            }
+        },
+        onRelease = { view ->
+            view.release()
+        }
+    )
 }

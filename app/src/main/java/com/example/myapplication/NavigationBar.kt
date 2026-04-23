@@ -11,39 +11,33 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
-import com.canhub.cropper.CropImageContract
-import com.canhub.cropper.CropImageContractOptions
-import com.canhub.cropper.CropImageOptions
-import com.canhub.cropper.CropImageView
+import com.example.common.util.TelegramStyleCropper
 import com.example.myapplication.ui.detail.MovieDetailScreen
 import com.example.myapplication.ui.home.HomeMovieScreen
 import com.example.myapplication.ui.movie.MovieScreen
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 @Composable
 fun MainScreen() {
@@ -110,41 +104,20 @@ fun SettingsScreen() {
 @Composable
 fun ProfileScreen() {
     var imageUri by remember { mutableStateOf<Uri?>(null) }
-    var isLoading by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
+    var showCropper by remember { mutableStateOf(false) }
 
-    val cropLauncher = rememberLauncherForActivityResult(CropImageContract()) { result ->
-        if (result.isSuccessful) {
-            result.uriContent?.let { uri ->
-                scope.launch {
-                    isLoading = true
-                    // Simulate upload delay
-                    delay(1500)
-                    imageUri = uri
-                    isLoading = false
-                }
-            }
+    // store transform result
+    var scale by remember { mutableFloatStateOf(1f) }
+    var offsetX by remember { mutableFloatStateOf(0f) }
+    var offsetY by remember { mutableFloatStateOf(0f) }
+
+    val imagePicker = rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.GetContent()
+    ) { uri ->
+        uri?.let {
+            imageUri = it
+            showCropper = true
         }
-    }
-
-    fun launchCropper() {
-        val options = CropImageContractOptions(
-            uri = null,
-            cropImageOptions = CropImageOptions(
-                guidelines = CropImageView.Guidelines.ON,
-                aspectRatioX = 1,
-                aspectRatioY = 1,
-                fixAspectRatio = true,
-                cropShape = CropImageView.CropShape.OVAL,
-                showProgressBar = true,
-                autoZoomEnabled = true,
-                multiTouchEnabled = true,
-                centerMoveEnabled = false,
-                allowRotation = false,
-                allowFlipping = false
-            )
-        )
-        cropLauncher.launch(options)
     }
 
     Column(
@@ -152,51 +125,63 @@ fun ProfileScreen() {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Box(
-            modifier = Modifier
-                .size(160.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.surfaceVariant)
-                .clickable { if (!isLoading) launchCropper() },
-            contentAlignment = Alignment.Center
-        ) {
-            if (imageUri != null) {
-                AsyncImage(
-                    model = imageUri,
-                    contentDescription = "Profile Picture",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-            } else {
-                Text(
-                    text = "Upload Photo",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
 
-            if (isLoading) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.4f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(
-                        color = Color.White, strokeWidth = 3.dp
+        if (showCropper && imageUri != null) {
+            TelegramStyleCropper(
+                imageUri = imageUri!!,
+                onCancel = {
+                    showCropper = false
+                },
+                onCrop = { s, x, y ->
+                    scale = s
+                    // We normalize the offset back to 160dp size from 260dp size
+                    offsetX = x * (160f / 260f)
+                    offsetY = y * (160f / 260f)
+                    showCropper = false
+                }
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .size(160.dp)
+                    .clip(CircleShape)
+                    .background(Color.LightGray)
+                    .clickable {
+                        imagePicker.launch("image/*")
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                if (imageUri == null) {
+                    Icon(
+                        imageVector = Icons.Default.AccountCircle,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        tint = Color.Gray
+                    )
+                } else {
+                    AsyncImage(
+                        model = imageUri,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .graphicsLayer {
+                                scaleX = scale
+                                scaleY = scale
+                                translationX = offsetX
+                                translationY = offsetY
+                            },
+                        contentScale = ContentScale.Crop
                     )
                 }
             }
-        }
 
-        if (imageUri != null && !isLoading) {
             Text(
                 text = "Change Photo",
                 modifier = Modifier
                     .padding(top = 16.dp)
-                    .clickable { launchCropper() },
-                color = MaterialTheme.colorScheme.primary,
-                style = MaterialTheme.typography.labelLarge
+                    .clickable {
+                        imagePicker.launch("image/*")
+                    }
             )
         }
     }

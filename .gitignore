@@ -1,15 +1,33 @@
+# IntelliJ / Android Studio
 *.iml
-.gradle
-/local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
+.idea/caches/
+.idea/libraries/
+.idea/modules.xml
+.idea/workspace.xml
+.idea/navEditor.xml
+.idea/assetWizardSettings.xml
+
+# Keep shared project settings (optional)
+!.idea/codeStyles/
+!.idea/misc.xml
+!.idea/inspectionProfiles/
+
+# Gradle
+.gradle/
+
+# Local machine config
 local.properties
+
+# macOS
+.DS_Store
+
+# Build outputs
+build/
+*/build/
+
+# Android captures
+captures/
+
+# Native build
+.externalNativeBuild/
+.cxx/

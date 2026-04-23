@@ -82,9 +82,10 @@ class MovieViewModel(
                 MovieType.NOW_PLAYING -> getNowPlayingUseCase(page)
                 MovieType.POPULAR -> getPopularUseCase(page)
                 MovieType.SEARCH -> searchMoviesUseCase(currentState.searchQuery, page)
+                else -> null
             }
 
-            flow.collect { result ->
+            flow?.collect { result ->
                 when (result) {
                     is NetworkResult.Loading -> {
                         if (isInitial) {

@@ -9,6 +9,8 @@ data class HomeMovieState(
     val genres: List<Genre> = emptyList(),
     val moviesByGenre: List<Movie> = emptyList(),
     val topRatedMovies: List<Movie> = emptyList(),
+    val nowPlayingMovie: List<Movie> = emptyList(),
+    val popularMovies: List<Movie> = emptyList(),
     val selectedGenreId: Int? = null,
     val errorMessage: String? = null,
 )
@@ -18,6 +20,8 @@ sealed class HomeMovieIntent {
     object LoadGenres : HomeMovieIntent()
     data class SelectGenre(val genreId: Int) : HomeMovieIntent()
     data class LoadTopRatedMovies(val page: Int) : HomeMovieIntent()
+    data class LoadPopular(val page: Int) : HomeMovieIntent()
+    data class LoadNowPlaying(val page: Int) : HomeMovieIntent()
 }
 
 sealed class HomeMovieEffect {

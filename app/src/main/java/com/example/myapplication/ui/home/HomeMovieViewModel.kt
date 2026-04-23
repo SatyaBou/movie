@@ -5,15 +5,19 @@ import com.example.common.base.BaseViewModel
 import com.example.common.util.NetworkResult
 import com.example.domain.usecase.GetGenresUseCase
 import com.example.domain.usecase.GetMoviesByGenreUseCase
-import com.example.domain.usecase.GetTrendingMovies
+import com.example.domain.usecase.GetNowPlayingUseCase
+import com.example.domain.usecase.GetPopularUseCase
 import com.example.domain.usecase.GetTopRatedUseCase
+import com.example.domain.usecase.GetTrendingMovies
 import kotlinx.coroutines.launch
 
 class HomeMovieViewModel(
     private val getTrendingMovies: GetTrendingMovies,
     private val getGenresUseCase: GetGenresUseCase,
     private val getMoviesByGenreUseCase: GetMoviesByGenreUseCase,
-    private val getTopRatedUseCase: GetTopRatedUseCase
+    private val getTopRatedUseCase: GetTopRatedUseCase,
+    private val getPopularUseCase: GetPopularUseCase,
+    private val getNowPlayingUseCase: GetNowPlayingUseCase
 ) : BaseViewModel<HomeMovieState, HomeMovieIntent, HomeMovieEffect>(
     initialState = HomeMovieState()
 ) {
@@ -25,7 +29,18 @@ class HomeMovieViewModel(
                 updateState { copy(selectedGenreId = intent.genreId) }
                 fetchMoviesByGenre(intent.genreId)
             }
-            is HomeMovieIntent.LoadTopRatedMovies -> fetchTopRatedMovies(intent.page)
+
+            is HomeMovieIntent.LoadTopRatedMovies -> {
+                fetchTopRatedMovies(intent.page)
+            }
+
+            is HomeMovieIntent.LoadPopular -> {
+                fetchPopularMovies(intent.page)
+            }
+
+            is HomeMovieIntent.LoadNowPlaying -> {
+                fetchNowPlayingMovies(intent.page)
+            }
         }
     }
 
@@ -39,11 +54,13 @@ class HomeMovieViewModel(
                             isLoading = false, movies = result.data
                         )
                     }
+
                     is NetworkResult.Error -> updateState {
                         copy(
                             isLoading = false, errorMessage = result.message
                         )
                     }
+
                     is NetworkResult.Exception -> updateState {
                         copy(
                             isLoading = false, errorMessage = result.e.message
@@ -70,11 +87,13 @@ class HomeMovieViewModel(
                             handleIntent(HomeMovieIntent.SelectGenre(result.data[0].id))
                         }
                     }
+
                     is NetworkResult.Error -> updateState {
                         copy(
                             isLoading = false, errorMessage = result.message
                         )
                     }
+
                     is NetworkResult.Exception -> updateState {
                         copy(
                             isLoading = false, errorMessage = result.e.message
@@ -95,11 +114,13 @@ class HomeMovieViewModel(
                             isLoading = false, moviesByGenre = result.data
                         )
                     }
+
                     is NetworkResult.Error -> updateState {
                         copy(
                             isLoading = false, errorMessage = result.message
                         )
                     }
+
                     is NetworkResult.Exception -> updateState {
                         copy(
                             isLoading = false, errorMessage = result.e.message
@@ -120,11 +141,67 @@ class HomeMovieViewModel(
                             isLoading = false, topRatedMovies = result.data
                         )
                     }
+
                     is NetworkResult.Error -> updateState {
                         copy(
                             isLoading = false, errorMessage = result.message
                         )
                     }
+
+                    is NetworkResult.Exception -> updateState {
+                        copy(
+                            isLoading = false, errorMessage = result.e.message
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    private fun fetchPopularMovies(page: Int) {
+        viewModelScope.launch {
+            getPopularUseCase(page).collect { result ->
+                when (result) {
+                    is NetworkResult.Loading -> updateState { copy(isLoading = true) }
+                    is NetworkResult.Success -> updateState {
+                        copy(
+                            isLoading = false, popularMovies = result.data
+                        )
+                    }
+
+                    is NetworkResult.Error -> updateState {
+                        copy(
+                            isLoading = false, errorMessage = result.message
+                        )
+                    }
+
+                    is NetworkResult.Exception -> updateState {
+                        copy(
+                            isLoading = false, errorMessage = result.e.message
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    private fun fetchNowPlayingMovies(page: Int) {
+        viewModelScope.launch {
+            getNowPlayingUseCase(page).collect { result ->
+                when (result) {
+                    is NetworkResult.Loading -> updateState { copy(isLoading = true) }
+                    is NetworkResult.Success -> updateState {
+                        copy(
+                            isLoading = false, nowPlayingMovie = result.data
+                        )
+                    }
+
+                    is NetworkResult.Error -> updateState {
+                        copy(
+                            isLoading = false, errorMessage = result.message
+                        )
+                    }
+
                     is NetworkResult.Exception -> updateState {
                         copy(
                             isLoading = false, errorMessage = result.e.message

@@ -1,7 +1,12 @@
 package com.example.myapplication.ui.home
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -14,7 +19,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyRow
@@ -60,11 +64,11 @@ import com.example.domain.model.Movie
 import kotlinx.coroutines.delay
 import org.koin.androidx.compose.koinViewModel
 
+
 @Composable
 fun HomeMovieScreen(
     viewModel: HomeMovieViewModel = koinViewModel()
 ) {
-
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val scrollState = rememberScrollState()
@@ -79,6 +83,15 @@ fun HomeMovieScreen(
     val blurAmount by remember {
         derivedStateOf {
             (scrollState.value.toFloat() / 400f).coerceIn(0f, 16f)
+        }
+    }
+
+    // Determine when the GenreListSection should be pinned
+    // 450.dp is SlideSection height. With 0.4 parallax, it moves slower.
+    // Threshold is roughly when the original GenreListSection hits the bottom of TopSection.
+    val isGenrePinned by remember {
+        derivedStateOf {
+            scrollState.value > 600 // Adjust this value based on testing
         }
     }
 
@@ -97,6 +110,8 @@ fun HomeMovieScreen(
         viewModel.handleIntent(HomeMovieIntent.LoadTrendingMovies(1))
         viewModel.handleIntent(HomeMovieIntent.LoadGenres)
         viewModel.handleIntent(HomeMovieIntent.LoadTopRatedMovies(1))
+        viewModel.handleIntent(HomeMovieIntent.LoadPopular(1))
+        viewModel.handleIntent(HomeMovieIntent.LoadNowPlaying(1))
     }
 
 
@@ -108,6 +123,7 @@ fun HomeMovieScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .padding(bottom = 5.dp)
                 .verticalScroll(scrollState)
         ) {
             // Slider Section with Blur and Parallax
@@ -116,55 +132,92 @@ fun HomeMovieScreen(
                     .fillMaxWidth()
                     .blur(blurAmount.dp)
                     .graphicsLayer {
-                        // Push to bottom effect (parallax)
                         translationY = scrollState.value * 0.4f
                         alpha = 1f - (scrollState.value.toFloat() / 800f).coerceIn(0f, 1f)
                     }) {
                 Column {
                     SlideSection(state.movies)
-                    GenreListSection(state.genres, state.selectedGenreId) { genreId ->
+                    // Keep original GenreListSection here for initial view
+                    GenreListSection(
+                        isPinned = false, state.genres, state.selectedGenreId
+                    ) { genreId ->
                         viewModel.handleIntent(HomeMovieIntent.SelectGenre(genreId))
                     }
                 }
             }
 
-
-
-
             MoviesByGenreSection(state.moviesByGenre)
 
-
-            Box(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .matchParentSize()
-                        .padding(12.dp)
-                        .background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(15.dp))
-                )
-                TopRatedSection(state.topRatedMovies)
+            if (state.topRatedMovies.isNotEmpty()) {
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .matchParentSize()
+                            .padding(12.dp)
+                            .background(
+                                Color.White.copy(alpha = 0.1f), RoundedCornerShape(15.dp)
+                            )
+                    )
+                    TopRatedSection(state.topRatedMovies)
+                }
             }
-            // Extra spacer at bottom to allow scrolling past content
-            Spacer(modifier = Modifier.height(100.dp))
+
+            if (state.popularMovies.isNotEmpty()) {
+                PopularMovieSection(state.popularMovies)
+            }
+
+            if (state.nowPlayingMovie.isNotEmpty()) {
+                NowPlayingSection(state.nowPlayingMovie)
+            }
+
         }
 
-        // Pin the TopSection with "Push" Animation and Gradient Blur
-        TopSection(
-            alpha = toolbarAlpha, modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color.Black.copy(alpha = toolbarAlpha),
-                            Color.Black.copy(alpha = toolbarAlpha * 0.7f),
+        // --- PINNED HEADER SECTION ---
+        Column(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            TopSection(
+                alpha = toolbarAlpha, modifier = Modifier
+                    .background(
+                        if (isGenrePinned) {
+                            Color.Black
+                        } else {
                             Color.Transparent
-                        )
+                        }
                     )
-                )
-                .statusBarsPadding() // Respects the notch/status bar area
-        )
+                    .padding(top = 15.dp)
+            )
+
+            AnimatedVisibility(
+                visible = isGenrePinned,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
+            ) {
+                // This copy of GenreListSection is pinned at the top
+                Box(
+                    modifier = Modifier
+                        .height(50.dp)
+                        //   .padding(bottom = 8.dp)
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.Black,
+                                    Color.Black.copy(alpha = toolbarAlpha * 0.7f),
+                                    Color.Transparent
+                                )
+                            )
+                        )
+
+                ) {
+                    GenreListSection(
+                        isPinned = true, state.genres, state.selectedGenreId
+                    ) { genreId ->
+                        viewModel.handleIntent(HomeMovieIntent.SelectGenre(genreId))
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -379,35 +432,40 @@ fun MovieActionButton(
 
 @Composable
 fun GenreListSection(
-    genres: List<Genre>, selectedGenreId: Int?, onGenreSelected: (Int) -> Unit
+    isPinned: Boolean, genres: List<Genre>, selectedGenreId: Int?, onGenreSelected: (Int) -> Unit
 ) {
     Column(
         modifier = Modifier.fillMaxWidth()
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                "EXPLORE GENRES",
-                fontWeight = FontWeight.Bold,
-                fontSize = 14.sp,
-                color = Color.White
-            )
+        if (!isPinned) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "EXPLORE GENRES",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp,
+                    color = Color.White
+                )
 
-            Text(
-                "SEE ALL",
-                textDecoration = TextDecoration.Underline,
-                color = Color.Yellow,
-                fontWeight = FontWeight.Bold,
-                fontSize = 12.sp,
-                modifier = Modifier.clickable { /* Handle See All */ })
+                Text(
+                    "SEE ALL",
+                    textDecoration = TextDecoration.Underline,
+                    color = Color.Yellow,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp,
+                    modifier = Modifier.clickable { /* Handle See All */ })
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+
+
 
         LazyRow(
             modifier = Modifier.fillMaxWidth(),
@@ -542,6 +600,205 @@ fun TopRatedSection(movies: List<Movie>) {
                         color = Color.White,
                         fontSize = 12.sp,
                         maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun PopularMovieSection(movies: List<Movie>) {
+    Column(
+        modifier = Modifier.fillMaxWidth()
+        // .padding(top = 8.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 10.dp, top = 15.dp, end = 10.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "Popular Movie".uppercase(),
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp,
+                color = Color.White,
+            )
+
+            Text(
+                "SEE ALL",
+                textDecoration = TextDecoration.Underline,
+                color = Color.Yellow,
+                fontWeight = FontWeight.Bold,
+                fontSize = 12.sp,
+                modifier = Modifier.clickable { /* Handle See All */ })
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        LazyRow(
+            modifier = Modifier.fillMaxWidth(),
+            // contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(movies) { movie ->
+                Column(
+                    modifier = Modifier
+                        .width(140.dp)
+                        .padding(bottom = 25.dp)
+                ) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(210.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                    ) {
+                        Box {
+                            AsyncImage(
+                                model = ImageUrl.poster(movie.posterPath),
+                                contentDescription = movie.title,
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+
+                            movie.voteAverage?.let { rating ->
+                                Box(
+                                    modifier = Modifier
+                                        .padding(8.dp)
+                                        .background(
+                                            Color.Black.copy(alpha = 0.7f), RoundedCornerShape(4.dp)
+                                        )
+                                        .padding(horizontal = 4.dp, vertical = 2.dp)
+                                        .align(Alignment.TopEnd)
+                                ) {
+                                    Text(
+                                        text = "⭐ $rating",
+                                        color = Color.White,
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = movie.title ?: "",
+                        color = Color.White,
+                        fontSize = 12.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun NowPlayingSection(movies: List<Movie>) {
+    Column(
+        modifier = Modifier.fillMaxWidth()
+        // .padding(top = 8.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 10.dp, top = 15.dp, end = 10.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "Now Playing".uppercase(),
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp,
+                color = Color.White,
+            )
+
+            Text(
+                "SEE ALL",
+                textDecoration = TextDecoration.Underline,
+                color = Color.Yellow,
+                fontWeight = FontWeight.Bold,
+                fontSize = 12.sp,
+                modifier = Modifier.clickable { /* Handle See All */ })
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        LazyRow(
+            modifier = Modifier.fillMaxWidth(),
+            // contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(movies) { movie ->
+                Column(
+                    modifier = Modifier
+                        .width(250.dp)
+                        .padding(bottom = 5.dp)
+                        .background(
+                            Color.White.copy(alpha = 0.1f), RoundedCornerShape(15.dp)
+                        )
+                ) {
+                    Card(
+                        modifier = Modifier
+                            .width(250.dp)
+                            .height(150.dp)
+                            .padding(15.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                    ) {
+                        Box {
+                            AsyncImage(
+                                model = ImageUrl.poster(movie.posterPath),
+                                contentDescription = movie.title,
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+
+                            movie.voteAverage?.let { rating ->
+                                Box(
+                                    modifier = Modifier
+                                        .padding(8.dp)
+                                        .background(
+                                            Color.Black.copy(alpha = 0.7f), RoundedCornerShape(4.dp)
+                                        )
+                                        .padding(horizontal = 4.dp, vertical = 2.dp)
+                                        .align(Alignment.TopEnd)
+                                ) {
+                                    Text(
+                                        text = "⭐ $rating",
+                                        color = Color.White,
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        modifier = Modifier.padding(start = 10.dp, end = 10.dp, bottom = 5.dp),
+                        text = movie.title ?: "",
+                        color = Color.White,
+                        fontSize = 15.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        modifier = Modifier.padding(start = 10.dp, end = 10.dp, bottom = 5.dp),
+                        text = movie.overview ?: "",
+                        color = Color.White.copy(alpha = 0.7f),
+                        fontSize = 12.sp,
+                        maxLines = 3,
                         overflow = TextOverflow.Ellipsis,
                         fontWeight = FontWeight.Medium
                     )

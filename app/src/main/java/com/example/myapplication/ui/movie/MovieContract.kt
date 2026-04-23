@@ -15,7 +15,7 @@ data class MovieState(
 )
 
 enum class MovieType {
-    NOW_PLAYING, POPULAR, SEARCH
+    NOW_PLAYING, POPULAR, SEARCH, TOP_RATED
 }
 
 // 2. Intent: User actions/intentions

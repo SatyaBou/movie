@@ -100,7 +100,11 @@ fun HomeMovieScreen(
     }
 
 
-    Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -115,26 +119,40 @@ fun HomeMovieScreen(
                         // Push to bottom effect (parallax)
                         translationY = scrollState.value * 0.4f
                         alpha = 1f - (scrollState.value.toFloat() / 800f).coerceIn(0f, 1f)
+                    }) {
+                Column {
+                    SlideSection(state.movies)
+                    GenreListSection(state.genres, state.selectedGenreId) { genreId ->
+                        viewModel.handleIntent(HomeMovieIntent.SelectGenre(genreId))
                     }
-            ) {
-                SlideSection(state.movies)
+                }
             }
 
-            GenreListSection(state.genres, state.selectedGenreId) { genreId ->
-                viewModel.handleIntent(HomeMovieIntent.SelectGenre(genreId))
-            }
+
+
+
             MoviesByGenreSection(state.moviesByGenre)
 
-            TopRatedSection(state.topRatedMovies)
 
+            Box(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .matchParentSize()
+                        .padding(12.dp)
+                        .background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(15.dp))
+                )
+                TopRatedSection(state.topRatedMovies)
+            }
             // Extra spacer at bottom to allow scrolling past content
             Spacer(modifier = Modifier.height(100.dp))
         }
 
         // Pin the TopSection with "Push" Animation and Gradient Blur
         TopSection(
-            alpha = toolbarAlpha,
-            modifier = Modifier
+            alpha = toolbarAlpha, modifier = Modifier
                 .fillMaxWidth()
                 .background(
                     Brush.verticalGradient(
@@ -153,8 +171,7 @@ fun HomeMovieScreen(
 
 @Composable
 fun TopSection(
-    alpha: Float,
-    modifier: Modifier = Modifier
+    alpha: Float, modifier: Modifier = Modifier
 ) {
     // Dynamic padding: starts taller, gets more compact
     val topPadding = (30 - (alpha * 30)).dp
@@ -174,13 +191,12 @@ fun TopSection(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.graphicsLayer {
                 // "Push" animation: moves the content up by 15px as you scroll
-                translationY = -(alpha * 15f) 
-                
+                translationY = -(alpha * 15f)
+
                 val scale = 1f - (alpha * 0.12f)
                 scaleX = scale
                 scaleY = scale
-            }
-        ) {
+            }) {
             Box(
                 modifier = Modifier
                     .size(42.dp)
@@ -216,8 +232,7 @@ fun TopSection(
                     scaleX = scale
                     scaleY = scale
                 }
-                .clickable { /* Handle Search */ }
-        )
+                .clickable { /* Handle Search */ })
     }
 }
 
@@ -227,8 +242,7 @@ fun SlideSection(movies: List<Movie>) {
     if (movies.isEmpty()) return
 
     val pagerState = rememberPagerState(
-        pageCount = { movies.size }
-    )
+        pageCount = { movies.size })
 
     // Auto scroll
     LaunchedEffect(Unit) {
@@ -236,28 +250,23 @@ fun SlideSection(movies: List<Movie>) {
             delay(4000)
             val nextPage = (pagerState.currentPage + 1) % movies.size
             pagerState.animateScrollToPage(
-                page = nextPage,
-                animationSpec = tween(
-                    durationMillis = 900,
-                    easing = FastOutSlowInEasing
+                page = nextPage, animationSpec = tween(
+                    durationMillis = 900, easing = FastOutSlowInEasing
                 )
             )
         }
     }
 
     HorizontalPager(
-        state = pagerState,
-        modifier = Modifier
+        state = pagerState, modifier = Modifier
             .fillMaxWidth()
-            .height(450.dp),
-        pageSpacing = 0.dp
+            .height(450.dp), pageSpacing = 0.dp
     ) { page ->
 
         val movie = movies[page]
 
         //  key for parallax
-        val pageOffset =
-            (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
+        val pageOffset = (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
 
         val parallaxFactor = 0.3f
 
@@ -278,10 +287,8 @@ fun SlideSection(movies: List<Movie>) {
                     .background(
                         Brush.verticalGradient(
                             colors = listOf(
-                                Color.Transparent,
-                                Color.Black.copy(alpha = 0.9f)
-                            ),
-                            startY = 600f
+                                Color.Transparent, Color.Black.copy(alpha = 0.9f)
+                            ), startY = 600f
                         )
                     )
             )
@@ -294,8 +301,7 @@ fun SlideSection(movies: List<Movie>) {
                     .graphicsLayer {
                         translationX = pageOffset * size.width * parallaxFactor
                         alpha = 1f - kotlin.math.abs(pageOffset) * 0.3f
-                    }
-            ) {
+                    }) {
 
                 Text(
                     text = movie.title ?: "",
@@ -373,14 +379,10 @@ fun MovieActionButton(
 
 @Composable
 fun GenreListSection(
-    genres: List<Genre>,
-    selectedGenreId: Int?,
-    onGenreSelected: (Int) -> Unit
+    genres: List<Genre>, selectedGenreId: Int?, onGenreSelected: (Int) -> Unit
 ) {
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 24.dp)
+        modifier = Modifier.fillMaxWidth()
     ) {
         Row(
             modifier = Modifier
@@ -402,8 +404,7 @@ fun GenreListSection(
                 color = Color.Yellow,
                 fontWeight = FontWeight.Bold,
                 fontSize = 12.sp,
-                modifier = Modifier.clickable { /* Handle See All */ }
-            )
+                modifier = Modifier.clickable { /* Handle See All */ })
         }
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -419,13 +420,9 @@ fun GenreListSection(
                     if (isSelected) Color.Red else Color.DarkGray
                 )
                 Button(
-                    onClick = { onGenreSelected(genre.id) },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = color,
-                        contentColor = Color.White
-                    ),
-                    shape = RoundedCornerShape(24.dp),
-                    modifier = Modifier.height(36.dp)
+                    onClick = { onGenreSelected(genre.id) }, colors = ButtonDefaults.buttonColors(
+                        containerColor = color, contentColor = Color.White
+                    ), shape = RoundedCornerShape(24.dp), modifier = Modifier.height(36.dp)
                 ) {
                     Text(text = genre.name, fontSize = 13.sp)
                 }
@@ -465,14 +462,13 @@ fun MoviesByGenreSection(movies: List<Movie>) {
 @Composable
 fun TopRatedSection(movies: List<Movie>) {
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 8.dp)
+        modifier = Modifier.fillMaxWidth()
+        // .padding(top = 8.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp),
+                .padding(start = 25.dp, top = 25.dp, end = 25.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -480,19 +476,31 @@ fun TopRatedSection(movies: List<Movie>) {
                 "TOP RATED",
                 fontWeight = FontWeight.Bold,
                 fontSize = 14.sp,
-                color = Color.White
+                color = Color.White,
             )
+
+            Text(
+                "SEE ALL",
+                textDecoration = TextDecoration.Underline,
+                color = Color.Yellow,
+                fontWeight = FontWeight.Bold,
+                fontSize = 12.sp,
+                modifier = Modifier.clickable { /* Handle See All */ })
         }
 
         Spacer(modifier = Modifier.height(12.dp))
 
         LazyRow(
             modifier = Modifier.fillMaxWidth(),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
+            // contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(movies) { movie ->
-                Column(modifier = Modifier.width(140.dp)) {
+                Column(
+                    modifier = Modifier
+                        .width(140.dp)
+                        .padding(bottom = 25.dp)
+                ) {
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -507,12 +515,14 @@ fun TopRatedSection(movies: List<Movie>) {
                                 modifier = Modifier.fillMaxSize(),
                                 contentScale = ContentScale.Crop
                             )
-                            
+
                             movie.voteAverage?.let { rating ->
                                 Box(
                                     modifier = Modifier
                                         .padding(8.dp)
-                                        .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(4.dp))
+                                        .background(
+                                            Color.Black.copy(alpha = 0.7f), RoundedCornerShape(4.dp)
+                                        )
                                         .padding(horizontal = 4.dp, vertical = 2.dp)
                                         .align(Alignment.TopEnd)
                                 ) {

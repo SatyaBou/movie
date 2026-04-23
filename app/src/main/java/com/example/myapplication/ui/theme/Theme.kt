@@ -30,11 +30,7 @@ private val LightColorScheme = lightColorScheme(
     onBackground = Color.White,
     onSurface = Color.White
 
-    /* Other default colors to override
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    */
+
 )
 
 @Composable

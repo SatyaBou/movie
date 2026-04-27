@@ -9,10 +9,10 @@
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:exported="true"
         android:fullBackupContent="@xml/backup_rules"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@drawable/ic_app"
         android:label="@string/app_name"
         android:resizeableActivity="false"
-        android:roundIcon="@mipmap/ic_launcher_round"
+        android:roundIcon="@drawable/ic_app"
         android:supportsPictureInPicture="false"
         android:supportsRtl="true"
         android:hardwareAccelerated="true"
@@ -20,7 +20,7 @@
         <activity
             android:name="com.example.myapplication.MainActivity"
             android:exported="true"
-            android:label="@string/title_activity_main"
+            android:label="@string/app_name"
             android:theme="@style/Theme.MyApplication">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

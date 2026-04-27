@@ -41,6 +41,15 @@ class HomeMovieViewModel(
             is HomeMovieIntent.LoadNowPlaying -> {
                 fetchNowPlayingMovies(intent.page)
             }
+
+            is HomeMovieIntent.ReorderSections -> {
+                val newList = currentState.sectionOrder.toMutableList()
+                if (intent.from in newList.indices && intent.to in newList.indices) {
+                    val item = newList.removeAt(intent.from)
+                    newList.add(intent.to, item)
+                    updateState { copy(sectionOrder = newList) }
+                }
+            }
         }
     }
 

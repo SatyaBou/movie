@@ -3,6 +3,11 @@ package com.example.myapplication.ui.home
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -10,6 +15,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,13 +29,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -42,14 +49,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.PlatformTextStyle
@@ -59,6 +71,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.example.common.R
@@ -68,6 +81,7 @@ import com.example.domain.model.Movie
 import com.example.myapplication.ui.movie.MovieType
 import kotlinx.coroutines.delay
 import org.koin.androidx.compose.koinViewModel
+import kotlin.math.abs
 
 
 @Composable
@@ -79,27 +93,36 @@ fun HomeMovieScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
-    val scrollState = rememberScrollState()
+    val lazyListState = rememberLazyListState()
+    
+    var draggingIndex by remember { mutableStateOf<Int?>(null) }
+    var hoveredIndex by remember { mutableStateOf<Int?>(null) }
 
     // Calculate toolbar alpha and blur based on scroll position
     val toolbarAlpha by remember {
         derivedStateOf {
-            (scrollState.value.toFloat() / 300f).coerceIn(0f, 1f)
+            val firstVisibleItemIndex = lazyListState.firstVisibleItemIndex
+            val firstVisibleItemScrollOffset = lazyListState.firstVisibleItemScrollOffset
+            if (firstVisibleItemIndex > 0) 1f
+            else (firstVisibleItemScrollOffset.toFloat() / 300f).coerceIn(0f, 1f)
         }
     }
 
     val blurAmount by remember {
         derivedStateOf {
-            (scrollState.value.toFloat() / 400f).coerceIn(0f, 16f)
+            val firstVisibleItemIndex = lazyListState.firstVisibleItemIndex
+            val firstVisibleItemScrollOffset = lazyListState.firstVisibleItemScrollOffset
+            if (firstVisibleItemIndex > 0) 16f
+            else (firstVisibleItemScrollOffset.toFloat() / 400f).coerceIn(0f, 16f)
         }
     }
 
-    // Determine when the GenreListSection should be pinned
-    // 450.dp is SlideSection height. With 0.4 parallax, it moves slower.
-    // Threshold is roughly when the original GenreListSection hits the bottom of TopSection.
     val isGenrePinned by remember {
         derivedStateOf {
-            scrollState.value > 600 // Adjust this value based on testing
+            val firstVisibleItemIndex = lazyListState.firstVisibleItemIndex
+            val firstVisibleItemScrollOffset = lazyListState.firstVisibleItemScrollOffset
+            // Threshold depends on Slider + Genre list height
+            firstVisibleItemIndex > 0 || firstVisibleItemScrollOffset > 600
         }
     }
 
@@ -109,7 +132,6 @@ fun HomeMovieScreen(
                 is HomeMovieEffect.ShowError -> {
                     snackbarHostState.showSnackbar(effect.message)
                 }
-
             }
         }
     }
@@ -122,79 +144,170 @@ fun HomeMovieScreen(
         viewModel.handleIntent(HomeMovieIntent.LoadNowPlaying(1))
     }
 
-
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(bottom = 5.dp)
-                .verticalScroll(scrollState)
-        ) {
-            // Slider Section with Blur and Parallax
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .blur(blurAmount.dp)
-                    .graphicsLayer {
-                        translationY = scrollState.value * 0.4f
-                        alpha = 1f - (scrollState.value.toFloat() / 800f).coerceIn(0f, 1f)
-                    }) {
-                Column {
-                    SlideSection(state.movies, onMovieClick)
-                    // Keep original GenreListSection here for initial view
-                    GenreListSection(
-                        isPinned = false,
-                        genres = state.genres,
-                        selectedGenreId = state.selectedGenreId,
-                        onSeeAllClick = { onSeeAllClick(MovieType.NOW_PLAYING) },
-                        onGenreSelected = { genreId ->
-                            viewModel.handleIntent(HomeMovieIntent.SelectGenre(genreId))
-                        }
+        if (state.isLoading && state.movies.isEmpty()) {
+            HomeShimmerLoading()
+        } else {
+            LazyColumn(
+                state = lazyListState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = 10.dp)
+            ) {
+                itemsIndexed(
+                    items = state.sectionOrder,
+                    key = { _, section -> section.name }
+                ) { index, section ->
+                    val currentIndex by rememberUpdatedState(index)
+                    var dragOffset by remember { mutableStateOf(0f) }
+                    var isDragging by remember { mutableStateOf(false) }
+
+                    // Animation for scale and shadow when dragging
+                    val scale by animateFloatAsState(if (isDragging) 1.05f else 1f, label = "scale")
+                    val elevation by animateFloatAsState(if (isDragging) 30f else 0f, label = "elevation")
+
+                    val isBeingHovered = hoveredIndex == index && draggingIndex != index
+                    val itemPushOffset by animateFloatAsState(
+                        targetValue = if (isBeingHovered) 25f else 0f,
+                        label = "itemPushOffset"
                     )
-                }
-            }
 
-            MoviesByGenreSection(state.moviesByGenre, onMovieClick)
-
-            if (state.topRatedMovies.isNotEmpty()) {
-                Box(modifier = Modifier.fillMaxWidth()) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .matchParentSize()
-                            .padding(12.dp)
-                            .background(
-                                Color.White.copy(alpha = 0.1f), RoundedCornerShape(15.dp)
-                            )
-                    )
-                    TopRatedSection(
-                        movies = state.topRatedMovies,
-                        onMovieClick = onMovieClick,
-                        onSeeAllClick = { onSeeAllClick(MovieType.TOP_RATED) }
-                    )
+                            .animateItem()
+                            .zIndex(if (isDragging) 1f else 0f)
+                            .graphicsLayer {
+                                translationY = if (isDragging) dragOffset else itemPushOffset
+                                scaleX = scale
+                                scaleY = scale
+                                shadowElevation = elevation
+                            }
+                            .pointerInput(Unit) {
+                                detectDragGesturesAfterLongPress(
+                                    onDragStart = {
+                                        isDragging = true
+                                        draggingIndex = currentIndex
+                                    },
+                                    onDragEnd = {
+                                        // Calculate final drop position
+                                        val visibleItems = lazyListState.layoutInfo.visibleItemsInfo
+                                        val draggedItem = visibleItems.find { it.key == section.name }
+
+                                        if (draggedItem != null) {
+                                            val draggedCenter = draggedItem.offset + draggedItem.size / 2 + dragOffset
+                                            val target = visibleItems.minByOrNull {
+                                                abs(it.offset + it.size / 2 - draggedCenter)
+                                            }
+
+                                            if (target != null && target.index != currentIndex) {
+                                                viewModel.handleIntent(HomeMovieIntent.ReorderSections(currentIndex, target.index))
+                                            }
+                                        }
+
+                                        isDragging = false
+                                        draggingIndex = null
+                                        hoveredIndex = null
+                                        dragOffset = 0f
+                                    },
+                                    onDragCancel = {
+                                        isDragging = false
+                                        draggingIndex = null
+                                        hoveredIndex = null
+                                        dragOffset = 0f
+                                    },
+                                    onDrag = { change, dragAmount ->
+                                        change.consume()
+                                        dragOffset += dragAmount.y
+
+                                        val visibleItems = lazyListState.layoutInfo.visibleItemsInfo
+                                        val draggedItemInfo = visibleItems.find { it.key == section.name }
+                                        if (draggedItemInfo != null) {
+                                            val draggedCenter = draggedItemInfo.offset + draggedItemInfo.size / 2 + dragOffset
+                                            hoveredIndex = visibleItems.minByOrNull {
+                                                abs(it.offset + it.size / 2 - draggedCenter)
+                                            }?.index
+                                        }
+                                    }
+                                )
+                            }
+                    ) {
+                        when (section) {
+                            HomeSectionType.SLIDER -> {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .blur(if (index == 0) blurAmount.dp else 0.dp)
+                                        .graphicsLayer {
+                                            if (index == 0) {
+                                                val scrollOffset = lazyListState.firstVisibleItemScrollOffset.toFloat()
+                                                alpha = 1f - (scrollOffset / 800f).coerceIn(0f, 1f)
+                                                translationY = scrollOffset * 0.4f
+                                            }
+                                        }
+                                ) {
+                                    SlideSection(state.movies, onMovieClick)
+                                }
+                            }
+                            HomeSectionType.GENRE_LIST -> {
+                                GenreListSection(
+                                    isPinned = false,
+                                    genres = state.genres,
+                                    selectedGenreId = state.selectedGenreId,
+                                    onSeeAllClick = { onSeeAllClick(MovieType.NOW_PLAYING) },
+                                    onGenreSelected = { genreId ->
+                                        viewModel.handleIntent(HomeMovieIntent.SelectGenre(genreId))
+                                    }
+                                )
+                            }
+                            HomeSectionType.MOVIES_BY_GENRE -> {
+                                MoviesByGenreSection(state.moviesByGenre, onMovieClick)
+                            }
+                            HomeSectionType.TOP_RATED -> {
+                                if (state.topRatedMovies.isNotEmpty()) {
+                                    Box(modifier = Modifier.fillMaxWidth()) {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .matchParentSize()
+                                                .padding(12.dp)
+                                                .background(
+                                                    Color.White.copy(alpha = 0.1f), RoundedCornerShape(15.dp)
+                                                )
+                                        )
+                                        TopRatedSection(
+                                            movies = state.topRatedMovies,
+                                            onMovieClick = onMovieClick,
+                                            onSeeAllClick = { onSeeAllClick(MovieType.TOP_RATED) }
+                                        )
+                                    }
+                                }
+                            }
+                            HomeSectionType.POPULAR -> {
+                                if (state.popularMovies.isNotEmpty()) {
+                                    PopularMovieSection(
+                                        movies = state.popularMovies,
+                                        onMovieClick = onMovieClick,
+                                        onSeeAllClick = { onSeeAllClick(MovieType.POPULAR) }
+                                    )
+                                }
+                            }
+                            HomeSectionType.NOW_PLAYING -> {
+                                if (state.nowPlayingMovie.isNotEmpty()) {
+                                    NowPlayingSection(
+                                        movies = state.nowPlayingMovie,
+                                        onMovieClick = onMovieClick,
+                                        onSeeAllClick = { onSeeAllClick(MovieType.NOW_PLAYING) }
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
-
-            if (state.popularMovies.isNotEmpty()) {
-                PopularMovieSection(
-                    movies = state.popularMovies,
-                    onMovieClick = onMovieClick,
-                    onSeeAllClick = { onSeeAllClick(MovieType.POPULAR) }
-                )
-            }
-
-            if (state.nowPlayingMovie.isNotEmpty()) {
-                NowPlayingSection(
-                    movies = state.nowPlayingMovie,
-                    onMovieClick = onMovieClick,
-                    onSeeAllClick = { onSeeAllClick(MovieType.NOW_PLAYING) }
-                )
-            }
-
         }
 
         // --- PINNED HEADER SECTION ---
@@ -220,11 +333,9 @@ fun HomeMovieScreen(
                 enter = fadeIn() + expandVertically(),
                 exit = fadeOut() + shrinkVertically()
             ) {
-                // This copy of GenreListSection is pinned at the top
                 Box(
                     modifier = Modifier
                         .height(50.dp)
-                        //   .padding(bottom = 8.dp)
                         .background(
                             Brush.verticalGradient(
                                 colors = listOf(
@@ -234,7 +345,6 @@ fun HomeMovieScreen(
                                 )
                             )
                         )
-
                 ) {
                     GenreListSection(
                         isPinned = true,
@@ -258,7 +368,6 @@ fun TopSection(
     onSearchClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    // Dynamic padding: starts taller, gets more compact
     val topPadding = (30 - (alpha * 30)).dp
     val bottomPadding = (16 - (alpha * 10)).dp
 
@@ -275,9 +384,7 @@ fun TopSection(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.graphicsLayer {
-                // \"Push\" animation: moves the content up by 15px as you scroll
                 translationY = -(alpha * 15f)
-
                 val scale = 1f - (alpha * 0.12f)
                 scaleX = scale
                 scaleY = scale
@@ -311,7 +418,6 @@ fun TopSection(
             modifier = Modifier
                 .size(28.dp)
                 .graphicsLayer {
-                    // Sync the search icon push with the profile section
                     translationY = -(alpha * 15f)
                     val scale = 1f - (alpha * 0.08f)
                     scaleX = scale
@@ -329,7 +435,6 @@ fun SlideSection(movies: List<Movie>, onMovieClick: (Int) -> Unit) {
     val pagerState = rememberPagerState(
         pageCount = { movies.size })
 
-    // Auto scroll
     LaunchedEffect(Unit) {
         while (true) {
             delay(4000)
@@ -349,15 +454,10 @@ fun SlideSection(movies: List<Movie>, onMovieClick: (Int) -> Unit) {
     ) { page ->
 
         val movie = movies[page]
-
-        //  key for parallax
         val pageOffset = (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
-
         val parallaxFactor = 0.3f
 
         Box(modifier = Modifier.fillMaxSize()) {
-
-            // IMAGE
             AsyncImage(
                 model = ImageUrl.backdrop(movie.posterPath),
                 contentDescription = null,
@@ -365,7 +465,6 @@ fun SlideSection(movies: List<Movie>, onMovieClick: (Int) -> Unit) {
                 contentScale = ContentScale.Crop
             )
 
-            // Gradient overlay
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -378,7 +477,6 @@ fun SlideSection(movies: List<Movie>, onMovieClick: (Int) -> Unit) {
                     )
             )
 
-            // TEXT + BUTTONS (PARALLAX EFFECT)
             Column(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
@@ -505,9 +603,6 @@ fun GenreListSection(
             Spacer(modifier = Modifier.height(12.dp))
         }
 
-
-
-
         LazyRow(
             modifier = Modifier.fillMaxWidth(),
             contentPadding = PaddingValues(horizontal = 16.dp),
@@ -567,7 +662,6 @@ fun TopRatedSection(
 ) {
     Column(
         modifier = Modifier.fillMaxWidth()
-        // .padding(top = 8.dp)
     ) {
         Row(
             modifier = Modifier
@@ -596,7 +690,6 @@ fun TopRatedSection(
 
         LazyRow(
             modifier = Modifier.fillMaxWidth(),
-            // contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(movies) { movie ->
@@ -664,7 +757,6 @@ fun PopularMovieSection(
 ) {
     Column(
         modifier = Modifier.fillMaxWidth()
-        // .padding(top = 8.dp)
     ) {
         Row(
             modifier = Modifier
@@ -693,7 +785,6 @@ fun PopularMovieSection(
 
         LazyRow(
             modifier = Modifier.fillMaxWidth(),
-            // contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(movies) { movie ->
@@ -761,7 +852,6 @@ fun NowPlayingSection(
 ) {
     Column(
         modifier = Modifier.fillMaxWidth()
-        // .padding(top = 8.dp)
     ) {
         Row(
             modifier = Modifier
@@ -790,7 +880,6 @@ fun NowPlayingSection(
 
         LazyRow(
             modifier = Modifier.fillMaxWidth(),
-            // contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(movies) { movie ->
@@ -864,6 +953,104 @@ fun NowPlayingSection(
                             )
                         )
                     )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun Modifier.shimmerLoadingAnimation(): Modifier {
+    val transition = rememberInfiniteTransition(label = "shimmer")
+    val translateAnim by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1000f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1200, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "shimmer"
+    )
+
+    val shimmerColors = listOf(
+        Color.DarkGray.copy(alpha = 0.9f),
+        Color.DarkGray.copy(alpha = 0.4f),
+        Color.DarkGray.copy(alpha = 0.9f),
+    )
+
+    val brush = Brush.linearGradient(
+        colors = shimmerColors,
+        start = Offset.Zero,
+        end = Offset(x = translateAnim, y = translateAnim)
+    )
+
+    return this.background(brush)
+}
+
+@Composable
+fun HomeShimmerLoading() {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(bottom = 80.dp),
+        verticalArrangement = Arrangement.spacedBy(24.dp)
+    ) {
+        item {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(450.dp)
+                    .shimmerLoadingAnimation()
+            )
+        }
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Box(
+                    modifier = Modifier
+                        .padding(horizontal = 16.dp)
+                        .width(150.dp)
+                        .height(20.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .shimmerLoadingAnimation()
+                )
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(5) {
+                        Box(
+                            modifier = Modifier
+                                .width(100.dp)
+                                .height(36.dp)
+                                .clip(RoundedCornerShape(24.dp))
+                                .shimmerLoadingAnimation()
+                        )
+                    }
+                }
+            }
+        }
+        items(3) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Box(
+                    modifier = Modifier
+                        .padding(horizontal = 16.dp)
+                        .width(120.dp)
+                        .height(20.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .shimmerLoadingAnimation()
+                )
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(5) {
+                        Box(
+                            modifier = Modifier
+                                .width(140.dp)
+                                .height(210.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .shimmerLoadingAnimation()
+                        )
+                    }
                 }
             }
         }

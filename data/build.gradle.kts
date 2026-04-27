@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
@@ -12,6 +14,15 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles("consumer-rules.pro")
+
+        val credentialsFile = rootProject.file("credentials.properties")
+        val credentials = Properties()
+        if (credentialsFile.exists()) {
+            credentials.load(credentialsFile.inputStream())
+        }
+        
+        val apiKey = credentials.getProperty("TMDB_API_KEY") ?: ""
+        buildConfigField("String", "TMDB_API_KEY", "\"$apiKey\"")
     }
 
     buildTypes {
@@ -29,6 +40,9 @@ android {
     }
     kotlinOptions {
         jvmTarget = "17"
+    }
+    buildFeatures {
+        buildConfig = true
     }
 }
 

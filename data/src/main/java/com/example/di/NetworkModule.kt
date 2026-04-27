@@ -1,5 +1,6 @@
 package com.example.di
 
+import com.example.data.BuildConfig
 import com.example.remote.ApiService
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
@@ -19,7 +20,7 @@ val networkModule = module {
         val authInterceptor = Interceptor { chain ->
             val original = chain.request()
             val url = original.url.newBuilder()
-                .addQueryParameter("api_key", "ad7471a94d2cd8197ac24035d6f67a8b")
+                .addQueryParameter("api_key", BuildConfig.TMDB_API_KEY)
                 .build()
             chain.proceed(original.newBuilder().url(url).build())
         }

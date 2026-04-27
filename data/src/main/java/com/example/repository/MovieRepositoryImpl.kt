@@ -15,10 +15,10 @@ import java.io.IOException
 class MovieRepositoryImpl(
     private val apiService: ApiService
 ) : MovieRepository {
-    override fun getNowPlaying(page: Int): Flow<NetworkResult<List<Movie>>> = flow {
+    override fun getNowPlaying(page: Int, region: String?): Flow<NetworkResult<List<Movie>>> = flow {
         emit(NetworkResult.Loading())
         try {
-            val response = apiService.getNowPlaying(page, null)
+            val response = apiService.getNowPlaying(page, null, region)
             emit(NetworkResult.Success(response.results))
         } catch (e: HttpException) {
             emit(NetworkResult.Error(e.localizedMessage ?: "An unexpected error occurred"))
@@ -27,10 +27,10 @@ class MovieRepositoryImpl(
         }
     }
 
-    override fun getPopular(page: Int): Flow<NetworkResult<List<Movie>>> = flow {
+    override fun getPopular(page: Int, region: String?): Flow<NetworkResult<List<Movie>>> = flow {
         emit(NetworkResult.Loading())
         try {
-            val response = apiService.getPopular(page, null)
+            val response = apiService.getPopular(page, null, region)
             emit(NetworkResult.Success(response.results))
         } catch (e: HttpException) {
             emit(NetworkResult.Error(e.localizedMessage ?: "An unexpected error occurred"))
@@ -39,10 +39,10 @@ class MovieRepositoryImpl(
         }
     }
 
-    override fun getUpcoming(page: Int): Flow<NetworkResult<List<Movie>>> = flow {
+    override fun getUpcoming(page: Int, region: String?): Flow<NetworkResult<List<Movie>>> = flow {
         emit(NetworkResult.Loading())
         try {
-            val response = apiService.getUpcoming(page, null)
+            val response = apiService.getUpcoming(page, null, region)
             emit(NetworkResult.Success(response.results))
         } catch (e: HttpException) {
             emit(NetworkResult.Error(e.localizedMessage ?: "An unexpected error occurred"))
@@ -51,10 +51,10 @@ class MovieRepositoryImpl(
         }
     }
 
-    override fun getTopRated(page: Int): Flow<NetworkResult<List<Movie>>> = flow {
+    override fun getTopRated(page: Int, region: String?): Flow<NetworkResult<List<Movie>>> = flow {
         emit(NetworkResult.Loading())
         try {
-            val response = apiService.getTopRated(page, null)
+            val response = apiService.getTopRated(page, null, region)
             emit(NetworkResult.Success(response.results))
         } catch (e: HttpException) {
             emit(NetworkResult.Error(e.localizedMessage ?: "An unexpected error occurred"))
@@ -79,10 +79,10 @@ class MovieRepositoryImpl(
         }
     }
 
-    override fun searchMovies(query: String, page: Int): Flow<NetworkResult<List<Movie>>> = flow {
+    override fun searchMovies(query: String, page: Int, region: String?): Flow<NetworkResult<List<Movie>>> = flow {
         emit(NetworkResult.Loading())
         try {
-            val response = apiService.searchMovie(query, page, null)
+            val response = apiService.searchMovie(query, page, null, region)
             if (response.isSuccessful && response.body() != null) {
                 emit(NetworkResult.Success(response.body()!!.results))
             } else {
@@ -123,10 +123,10 @@ class MovieRepositoryImpl(
         }
     }
 
-    override fun getMoviesByGenre(genreId: Int): Flow<NetworkResult<List<Movie>>> = flow {
+    override fun getMoviesByGenre(genreId: Int, region: String?): Flow<NetworkResult<List<Movie>>> = flow {
         emit(NetworkResult.Loading())
         try {
-            val response = apiService.getMoviesByGenre(genreId)
+            val response = apiService.getMoviesByGenre(genreId, region = region)
             emit(NetworkResult.Success(response.results))
         } catch (e: HttpException) {
             emit(NetworkResult.Error(e.localizedMessage ?: "An unexpected error occurred"))

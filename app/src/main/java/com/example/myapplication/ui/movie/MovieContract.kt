@@ -11,17 +11,26 @@ data class MovieState(
     val currentPage: Int = 1,
     val endOfPaginationReached: Boolean = false,
     val currentType: MovieType = MovieType.NOW_PLAYING,
-    val searchQuery: String = ""
+    val searchQuery: String = "",
+    val selectedCountry: String? = null
 )
 
-enum class MovieType {
-    NOW_PLAYING, POPULAR, SEARCH, TOP_RATED
+enum class MovieType(val displayName: String) {
+    NOW_PLAYING("Now Playing"),
+    POPULAR("Popular"),
+    TOP_RATED("Top Rated"),
+    UPCOMING("Upcoming"),
+    SEARCH("Search")
 }
 
 // 2. Intent: User actions/intentions
 sealed class MovieIntent {
     object LoadNowPlaying : MovieIntent()
     object LoadPopular : MovieIntent()
+    object LoadTopRated : MovieIntent()
+    object LoadUpcoming : MovieIntent()
+    data class ChangeType(val type: MovieType) : MovieIntent()
+    data class ChangeCountry(val countryCode: String?) : MovieIntent()
     data class SearchMovies(val query: String) : MovieIntent()
     object Refresh : MovieIntent()
     object LoadMore : MovieIntent()

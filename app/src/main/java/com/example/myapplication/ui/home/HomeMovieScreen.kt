@@ -1,6 +1,7 @@
 package com.example.myapplication.ui.home
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
@@ -12,6 +13,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -50,6 +52,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
@@ -61,12 +65,16 @@ import com.example.common.R
 import com.example.common.util.ImageUrl
 import com.example.domain.model.Genre
 import com.example.domain.model.Movie
+import com.example.myapplication.ui.movie.MovieType
 import kotlinx.coroutines.delay
 import org.koin.androidx.compose.koinViewModel
 
 
 @Composable
 fun HomeMovieScreen(
+    onMovieClick: (Int) -> Unit = {},
+    onSeeAllClick: (MovieType) -> Unit = {},
+    onSearchClick: () -> Unit = {},
     viewModel: HomeMovieViewModel = koinViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -136,17 +144,21 @@ fun HomeMovieScreen(
                         alpha = 1f - (scrollState.value.toFloat() / 800f).coerceIn(0f, 1f)
                     }) {
                 Column {
-                    SlideSection(state.movies)
+                    SlideSection(state.movies, onMovieClick)
                     // Keep original GenreListSection here for initial view
                     GenreListSection(
-                        isPinned = false, state.genres, state.selectedGenreId
-                    ) { genreId ->
-                        viewModel.handleIntent(HomeMovieIntent.SelectGenre(genreId))
-                    }
+                        isPinned = false,
+                        genres = state.genres,
+                        selectedGenreId = state.selectedGenreId,
+                        onSeeAllClick = { onSeeAllClick(MovieType.NOW_PLAYING) },
+                        onGenreSelected = { genreId ->
+                            viewModel.handleIntent(HomeMovieIntent.SelectGenre(genreId))
+                        }
+                    )
                 }
             }
 
-            MoviesByGenreSection(state.moviesByGenre)
+            MoviesByGenreSection(state.moviesByGenre, onMovieClick)
 
             if (state.topRatedMovies.isNotEmpty()) {
                 Box(modifier = Modifier.fillMaxWidth()) {
@@ -159,16 +171,28 @@ fun HomeMovieScreen(
                                 Color.White.copy(alpha = 0.1f), RoundedCornerShape(15.dp)
                             )
                     )
-                    TopRatedSection(state.topRatedMovies)
+                    TopRatedSection(
+                        movies = state.topRatedMovies,
+                        onMovieClick = onMovieClick,
+                        onSeeAllClick = { onSeeAllClick(MovieType.TOP_RATED) }
+                    )
                 }
             }
 
             if (state.popularMovies.isNotEmpty()) {
-                PopularMovieSection(state.popularMovies)
+                PopularMovieSection(
+                    movies = state.popularMovies,
+                    onMovieClick = onMovieClick,
+                    onSeeAllClick = { onSeeAllClick(MovieType.POPULAR) }
+                )
             }
 
             if (state.nowPlayingMovie.isNotEmpty()) {
-                NowPlayingSection(state.nowPlayingMovie)
+                NowPlayingSection(
+                    movies = state.nowPlayingMovie,
+                    onMovieClick = onMovieClick,
+                    onSeeAllClick = { onSeeAllClick(MovieType.NOW_PLAYING) }
+                )
             }
 
         }
@@ -178,7 +202,9 @@ fun HomeMovieScreen(
             modifier = Modifier.fillMaxWidth()
         ) {
             TopSection(
-                alpha = toolbarAlpha, modifier = Modifier
+                alpha = toolbarAlpha,
+                onSearchClick = onSearchClick,
+                modifier = Modifier
                     .background(
                         if (isGenrePinned) {
                             Color.Black
@@ -211,10 +237,14 @@ fun HomeMovieScreen(
 
                 ) {
                     GenreListSection(
-                        isPinned = true, state.genres, state.selectedGenreId
-                    ) { genreId ->
-                        viewModel.handleIntent(HomeMovieIntent.SelectGenre(genreId))
-                    }
+                        isPinned = true,
+                        genres = state.genres,
+                        selectedGenreId = state.selectedGenreId,
+                        onSeeAllClick = { onSeeAllClick(MovieType.NOW_PLAYING) },
+                        onGenreSelected = { genreId ->
+                            viewModel.handleIntent(HomeMovieIntent.SelectGenre(genreId))
+                        }
+                    )
                 }
             }
         }
@@ -224,7 +254,9 @@ fun HomeMovieScreen(
 
 @Composable
 fun TopSection(
-    alpha: Float, modifier: Modifier = Modifier
+    alpha: Float,
+    onSearchClick: () -> Unit = {},
+    modifier: Modifier = Modifier
 ) {
     // Dynamic padding: starts taller, gets more compact
     val topPadding = (30 - (alpha * 30)).dp
@@ -243,7 +275,7 @@ fun TopSection(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.graphicsLayer {
-                // "Push" animation: moves the content up by 15px as you scroll
+                // \"Push\" animation: moves the content up by 15px as you scroll
                 translationY = -(alpha * 15f)
 
                 val scale = 1f - (alpha * 0.12f)
@@ -285,12 +317,12 @@ fun TopSection(
                     scaleX = scale
                     scaleY = scale
                 }
-                .clickable { /* Handle Search */ })
+                .clickable { onSearchClick() })
     }
 }
 
 @Composable
-fun SlideSection(movies: List<Movie>) {
+fun SlideSection(movies: List<Movie>, onMovieClick: (Int) -> Unit) {
 
     if (movies.isEmpty()) return
 
@@ -382,14 +414,19 @@ fun SlideSection(movies: List<Movie>) {
                         text = "WATCH NOW",
                         icon = R.drawable.ic_play,
                         background = Color.Red.copy(alpha = 0.9f),
-                        contentColor = Color.White
-                    )
+                        contentColor = Color.White,
+                        onClick = {
+                            onMovieClick(movie.id)
+                        })
 
                     MovieActionButton(
                         text = "INFO",
                         icon = R.drawable.ic_info,
                         background = Color.Gray.copy(alpha = 0.6f),
-                        contentColor = Color.White
+                        contentColor = Color.White,
+                        onClick = {
+                            onMovieClick(movie.id)
+                        }
                     )
                 }
             }
@@ -432,7 +469,11 @@ fun MovieActionButton(
 
 @Composable
 fun GenreListSection(
-    isPinned: Boolean, genres: List<Genre>, selectedGenreId: Int?, onGenreSelected: (Int) -> Unit
+    isPinned: Boolean,
+    genres: List<Genre>,
+    selectedGenreId: Int?,
+    onSeeAllClick: () -> Unit = {},
+    onGenreSelected: (Int) -> Unit
 ) {
     Column(
         modifier = Modifier.fillMaxWidth()
@@ -458,7 +499,7 @@ fun GenreListSection(
                     color = Color.Yellow,
                     fontWeight = FontWeight.Bold,
                     fontSize = 12.sp,
-                    modifier = Modifier.clickable { /* Handle See All */ })
+                    modifier = Modifier.clickable { onSeeAllClick() })
             }
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -469,12 +510,12 @@ fun GenreListSection(
 
         LazyRow(
             modifier = Modifier.fillMaxWidth(),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
+            contentPadding = PaddingValues(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             items(genres) { genre ->
                 val isSelected = selectedGenreId == genre.id
-                val color by androidx.compose.animation.animateColorAsState(
+                val color by animateColorAsState(
                     if (isSelected) Color.Red else Color.DarkGray
                 )
                 Button(
@@ -490,19 +531,20 @@ fun GenreListSection(
 }
 
 @Composable
-fun MoviesByGenreSection(movies: List<Movie>) {
+fun MoviesByGenreSection(movies: List<Movie>, onMovieClick: (Int) -> Unit) {
     LazyRow(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 16.dp),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         items(movies) { movie ->
             Card(
                 modifier = Modifier
                     .width(140.dp)
-                    .height(210.dp),
+                    .height(210.dp)
+                    .clickable { onMovieClick(movie.id) },
                 shape = RoundedCornerShape(12.dp),
                 elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
             ) {
@@ -518,7 +560,11 @@ fun MoviesByGenreSection(movies: List<Movie>) {
 }
 
 @Composable
-fun TopRatedSection(movies: List<Movie>) {
+fun TopRatedSection(
+    movies: List<Movie>,
+    onMovieClick: (Int) -> Unit,
+    onSeeAllClick: () -> Unit = {}
+) {
     Column(
         modifier = Modifier.fillMaxWidth()
         // .padding(top = 8.dp)
@@ -543,7 +589,7 @@ fun TopRatedSection(movies: List<Movie>) {
                 color = Color.Yellow,
                 fontWeight = FontWeight.Bold,
                 fontSize = 12.sp,
-                modifier = Modifier.clickable { /* Handle See All */ })
+                modifier = Modifier.clickable { onSeeAllClick() })
         }
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -558,6 +604,7 @@ fun TopRatedSection(movies: List<Movie>) {
                     modifier = Modifier
                         .width(140.dp)
                         .padding(bottom = 25.dp)
+                        .clickable { onMovieClick(movie.id) }
                 ) {
                     Card(
                         modifier = Modifier
@@ -610,7 +657,11 @@ fun TopRatedSection(movies: List<Movie>) {
 }
 
 @Composable
-fun PopularMovieSection(movies: List<Movie>) {
+fun PopularMovieSection(
+    movies: List<Movie>,
+    onMovieClick: (Int) -> Unit,
+    onSeeAllClick: () -> Unit = {}
+) {
     Column(
         modifier = Modifier.fillMaxWidth()
         // .padding(top = 8.dp)
@@ -635,7 +686,7 @@ fun PopularMovieSection(movies: List<Movie>) {
                 color = Color.Yellow,
                 fontWeight = FontWeight.Bold,
                 fontSize = 12.sp,
-                modifier = Modifier.clickable { /* Handle See All */ })
+                modifier = Modifier.clickable { onSeeAllClick() })
         }
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -650,6 +701,7 @@ fun PopularMovieSection(movies: List<Movie>) {
                     modifier = Modifier
                         .width(140.dp)
                         .padding(bottom = 25.dp)
+                        .clickable { onMovieClick(movie.id) }
                 ) {
                     Card(
                         modifier = Modifier
@@ -702,7 +754,11 @@ fun PopularMovieSection(movies: List<Movie>) {
 }
 
 @Composable
-fun NowPlayingSection(movies: List<Movie>) {
+fun NowPlayingSection(
+    movies: List<Movie>,
+    onMovieClick: (Int) -> Unit,
+    onSeeAllClick: () -> Unit = {}
+) {
     Column(
         modifier = Modifier.fillMaxWidth()
         // .padding(top = 8.dp)
@@ -727,7 +783,7 @@ fun NowPlayingSection(movies: List<Movie>) {
                 color = Color.Yellow,
                 fontWeight = FontWeight.Bold,
                 fontSize = 12.sp,
-                modifier = Modifier.clickable { /* Handle See All */ })
+                modifier = Modifier.clickable { onSeeAllClick() })
         }
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -745,6 +801,7 @@ fun NowPlayingSection(movies: List<Movie>) {
                         .background(
                             Color.White.copy(alpha = 0.1f), RoundedCornerShape(15.dp)
                         )
+                        .clickable { onMovieClick(movie.id) }
                 ) {
                     Card(
                         modifier = Modifier
@@ -792,15 +849,20 @@ fun NowPlayingSection(movies: List<Movie>) {
                         overflow = TextOverflow.Ellipsis,
                         fontWeight = FontWeight.Medium
                     )
-                    Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        modifier = Modifier.padding(start = 10.dp, end = 10.dp, bottom = 5.dp),
+                        modifier = Modifier.padding(start = 10.dp, end = 10.dp, bottom = 10.dp),
                         text = movie.overview ?: "",
                         color = Color.White.copy(alpha = 0.7f),
                         fontSize = 12.sp,
                         maxLines = 3,
                         overflow = TextOverflow.Ellipsis,
-                        fontWeight = FontWeight.Medium
+                        fontWeight = FontWeight.Medium,
+                        lineHeight = 13.sp,
+                        style = TextStyle(
+                            platformStyle = PlatformTextStyle(
+                                includeFontPadding = false
+                            )
+                        )
                     )
                 }
             }

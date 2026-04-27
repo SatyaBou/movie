@@ -20,24 +20,28 @@ interface ApiService {
     suspend fun getNowPlaying(
         @Query("page") page: Int?,
         @Query("language") language: String?,
+        @Query("region") region: String? = null
     ): NowPlayingMovieResponse
 
     @GET("movie/popular")
     suspend fun getPopular(
         @Query("page") page: Int?,
         @Query("language") language: String?,
+        @Query("region") region: String? = null
     ): PopularMovieResponse
 
     @GET("movie/upcoming")
     suspend fun getUpcoming(
         @Query("page") page: Int?,
         @Query("language") language: String?,
+        @Query("region") region: String? = null
     ): UpcomingMovieResponse
 
     @GET("movie/top_rated")
     suspend fun getTopRated(
         @Query("page") page: Int?,
         @Query("language") language: String?,
+        @Query("region") region: String? = null
     ): TopRatedMovieResponse
 
     @GET("movie/{movieId}")
@@ -57,6 +61,7 @@ interface ApiService {
         @Query("query") query: String?,
         @Query("page") page: Int?,
         @Query("language") language: String?,
+        @Query("region") region: String? = null
     ): Response<SearchMovieResponse>
 
     @GET("trending/movie/day")
@@ -70,6 +75,7 @@ interface ApiService {
     @GET("discover/movie")
     suspend fun getMoviesByGenre(
         @Query("with_genres") genreId: Int,
-        @Query("page") page: Int = 1
+        @Query("page") page: Int = 1,
+        @Query("region") region: String? = null
     ): PopularMovieResponse
 }

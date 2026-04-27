@@ -17,6 +17,7 @@
 
 # Local machine config
 local.properties
+credentials.properties
 
 # macOS
 .DS_Store

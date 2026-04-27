@@ -127,7 +127,7 @@ fun MovieDetailScreen(
                             videoId = trailer.key,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(240.dp)
+                                .height(150.dp)
                         )
                     } else {
                         AsyncImage(

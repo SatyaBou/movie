@@ -8,6 +8,7 @@ import com.example.domain.usecase.GetNowPlayingUseCase
 import com.example.domain.usecase.GetPopularUseCase
 import com.example.domain.usecase.GetTopRatedUseCase
 import com.example.domain.usecase.GetTrendingMovies
+import com.example.domain.usecase.GetUpcomingUseCase
 import com.example.domain.usecase.SearchMoviesUseCase
 import org.koin.core.module.dsl.factoryOf
 import org.koin.dsl.module
@@ -22,4 +23,5 @@ val domainModule = module {
     factory { GetNowPlayingUseCase(get()) }
     factory { GetPopularUseCase(get()) }
     factoryOf(::GetTopRatedUseCase)
+    factoryOf(::GetUpcomingUseCase)
 }

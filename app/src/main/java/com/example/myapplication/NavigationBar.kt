@@ -38,11 +38,13 @@ import com.example.common.util.TelegramStyleCropper
 import com.example.myapplication.ui.detail.MovieDetailScreen
 import com.example.myapplication.ui.home.HomeMovieScreen
 import com.example.myapplication.ui.movie.MovieScreen
+import com.example.myapplication.ui.movie.MovieType
 
 @Composable
 fun MainScreen() {
     var selectedItem by remember { mutableIntStateOf(0) }
     var selectedMovieId by remember { mutableStateOf<Int?>(null) }
+    var initialMovieType by remember { mutableStateOf<MovieType?>(null) }
 
     val items = listOf(
         BottomNavItem.Home,
@@ -66,7 +68,10 @@ fun MainScreen() {
                     items.forEachIndexed { index, item ->
                         NavigationBarItem(
                             selected = selectedItem == index,
-                            onClick = { selectedItem = index },
+                            onClick = { 
+                                selectedItem = index
+                                if (index == 1) initialMovieType = null // Reset type when clicking tab directly
+                            },
                             icon = {
                                 Icon(
                                     imageVector = item.icon, contentDescription = item.label
@@ -84,8 +89,21 @@ fun MainScreen() {
                     .fillMaxSize()
             ) {
                 when (selectedItem) {
-                    0 -> HomeScreen()
-                    1 -> MovieScreen(onNavigateToDetails = { id -> selectedMovieId = id })
+                    0 -> HomeMovieScreen(
+                        onMovieClick = { id -> selectedMovieId = id },
+                        onSeeAllClick = { type ->
+                            initialMovieType = type
+                            selectedItem = 1
+                        },
+                        onSearchClick = {
+                            initialMovieType = MovieType.SEARCH
+                            selectedItem = 1
+                        }
+                    )
+                    1 -> MovieScreen(
+                        onNavigateToDetails = { id -> selectedMovieId = id },
+                        initialType = initialMovieType
+                    )
                     2 -> ProfileScreen()
                     3 -> SettingsScreen()
                 }
@@ -185,9 +203,4 @@ fun ProfileScreen() {
             )
         }
     }
-}
-
-@Composable
-fun HomeScreen() {
-    HomeMovieScreen()
 }
